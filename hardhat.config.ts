@@ -8,13 +8,13 @@ import "@nomiclabs/hardhat-ethers";
 const config: HardhatUserConfig = {
   solidity: '0.6.12',
   starknet: {
-    dockerizedVersion: "0.8.1", // alternatively choose one of the two venv options below
+    // dockerizedVersion: "0.8.1", // alternatively choose one of the two venv options below
     // uses (my-venv) defined by `python -m venv path/to/my-venv`
-    // venv: "path/to/my-venv",
+    venv: "~/cairo_venv",
 
     // uses the currently active Python environment (hopefully with available Starknet commands!)
     // venv: "active",
-    network: "alpha",
+    network: "devnet",
     wallets: {
       OpenZeppelin: {
         accountName: "OpenZeppelin",
@@ -25,8 +25,17 @@ const config: HardhatUserConfig = {
   },
   networks: {
     devnet: {
-      url: "http://localhost:5000"
+      url: "http://localhost:5050"
     },
+    integratedDevnet: {
+      url: "http://127.0.0.1:5050/",
+    },
+    testnet: {
+      url: "https://alpha4.starknet.io",
+    },
+    voyage: {
+      url: "http://localhost:8800"
+    }
   },
 };
 
