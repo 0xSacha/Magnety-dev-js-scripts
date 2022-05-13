@@ -111,9 +111,10 @@ async function analyseEventTx(tx, contractAddr, eventHandler) {
     // console.log(events)
     for (let index in events) {
         const ev = events[index]
-        console.log("ev", ev)
+        // console.log("ev", ev)
+
         if (ev.from_address.substr(2) === contractAddr.substr(3)) {
-            await eventHandler(ev)
+            eventHandler(ev)
         }
     }
 }

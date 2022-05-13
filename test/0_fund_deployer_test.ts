@@ -41,19 +41,24 @@ describe("FundDeployer", function () {
 
             let eventType = parseInt(event.data[0], 16)
             let vault_addr = event.data[1]
-
+            console.log("lawvault", vault_addr)
+            console.log("aliceaddr", ctx.alice.address)
             if (eventType == FundDeployerEvents.CREATE_VAULT) {
                 console.log("CREATE_VAULT event emitted")
                 const { version, address } = await ctx.fund_deployer.call("get_latest_comptroller_version", {})
                 let vault = felthex(vault_addr);
+                console.log("alicevault", vault)
                 console.log(`version ${version} address ${address}`)
-
-                let pro = ctx.fund_deployer.invoke("set_vault_comptrollerd", { vault, comptroller_address: address })
-                console.log("promise", pro)
-                await pro
+                // console.log("fund_deployer", ctx.fund_deployer)
+                try {
+                    await ctx.fund_deployer.invoke("set_vault_comptroller", { vault: addr(vault_addr), comptroller_address: address })
+                } catch (error) {
+                    console.log(error)
+                }
                 console.log("set_vault_comptroller invoked completely")
                 const { comptroller } = await ctx.fund_deployer.call("get_vault_comptroller", { vault })
                 console.log("comptroller after deploy", comptroller)
+
             }
             else if (eventType == FundDeployerEvents.REMOVE_VAULT) {
                 console.log("REMOVE_VAULT event emitted")
@@ -107,11 +112,13 @@ describe("FundDeployer", function () {
             // await ctx.fund_deployer.invoke("set_vault_comptroller", { vault: addr(ctx.alice.address), comptroller_address: address })
 
             let { comptroller } = await ctx.call("alice", "fund_deployer", "get_vault_comptroller", { vault: addr(ctx.alice.address) })
-            console.log("comptroller", comptroller)
-            if (feltstr(comptroller) != "0")
-                break
-            // expect(feltstr(comptroller)).not.to.be.undefined
-            // expect(feltstr(comptroller)).to.be.equal(feltstr(ctx.comptroller_lib.address))
+            console.log("comptroller", feltstr(comptroller))
+            if (feltstr(comptroller) == "0")
+                continue
+            console.log("passed comptroller", feltstr(comptroller))
+            expect(feltstr(comptroller)).not.to.be.undefined
+            expect(feltstr(comptroller)).to.be.equal(feltstr(ctx.comptroller_lib.address))
+            break
         }
     })
 });
