@@ -35,12 +35,12 @@ import { deployAccounts, deployContracts, deployContext } from "./util"
 // }
 const timer = ms => new Promise(res => setTimeout(res, ms))
 
-export async function startListener(contractAddr, eventHandler) {
+export async function startListener(contract) {
     latestBlock = await getLatestBlock()
 
     while (1) {
         console.log("get receipt...")
-        await monitorContractEvents(contractAddr, eventHandler)
+        await monitorContractEvents(contract.address)
         // console.log("tr", tr)
         await timer(2000)
     }
@@ -55,14 +55,14 @@ export async function getLatestBlock() {
         return -1
     return data.block_number
 }
-async function monitorContractEvents(contractAddr, eventHandler) {
+async function monitorContractEvents(contractAddr) {
     let blockNumber = await getLatestBlock()
     // if block_number - latestBlock > 1
     if (blockNumber == latestBlock)
         return
     while (latestBlock < blockNumber) {
         latestBlock++
-        await scanEventTx(latestBlock, contractAddr, eventHandler)
+        scanEvenTx(latestBlock, contractAddr)
     }
     // latestBlock ++
     // while latestBlock <= block_number
@@ -87,7 +87,7 @@ async function handleEvent(event) {
 }
 
 // scan event in block txs and call event handler
-async function scanEventTx(blockNum, contractAddr, eventHandler) {
+async function scanEvenTx(blockNum, contractAddr) {
     console.log("ScanEventTx in block " + blockNum)
     const url = feederUrl + blockNum
     let data = (await axios.get(url)).data
@@ -99,21 +99,21 @@ async function scanEventTx(blockNum, contractAddr, eventHandler) {
 
     for (let index in data.transaction_receipts) {
         let tr = data.transaction_receipts[index]
-        await analyseEventTx(tr, contractAddr, eventHandler)
+        await analyseEventTx(tr, contractAddr)
     }
 }
 
 // analyseEventTx()
 // analyse the event form tx
-async function analyseEventTx(tx, contractAddr, eventHandler) {
+async function analyseEventTx(tx, contractAddr) {
     let events = tx.events
     // console.log(tx)
     // console.log(events)
     for (let index in events) {
         const ev = events[index]
-        console.log("ev", ev)
+
         if (ev.from_address.substr(2) === contractAddr.substr(3)) {
-            await eventHandler(ev)
+            handleEvent(ev)
         }
     }
 }
