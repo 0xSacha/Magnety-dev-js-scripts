@@ -11,3 +11,4 @@ __pycache__
 
 #Starknet plugin
 starknet-artifacts
+contracts/contract.cairo
