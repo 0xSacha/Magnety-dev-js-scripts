@@ -2,13 +2,14 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.starknet.common.syscalls import (
-    get_caller_address, 
+    get_caller_address, get_contract_address
 )
 
 from contracts.interface.IFeeManager import FeeConfig, IFeeManager
 
 from starkware.cairo.common.math import (
     assert_not_zero,
+    assert_not_equal,
 )
 
 from contracts.utils.utils import (
@@ -40,26 +41,16 @@ from contracts.interface.IVault import IVault
 
 from contracts.interface.IComptroller import IComptroller
 
+from contracts.interface.IPolicyManager import IPolicyManager
 
-struct ComptrollerList:
-    member comptroller_cnt: felt
-    member comptroller_list: felt*
-end
+from contracts.interface.IIntegrationManager import IIntegrationManager
+
 #
 # Events
 #
 
-
-struct VaultFactoryEvents:
-   member FUND_CREATED: felt 
-end
-
 @event
-func VaultLibSet(vaultLibAddress: felt):
-end
-
-@event
-func ComptrollerLibSet(comptrollerLibAddress: felt):
+func ComptrollerSet(comptrollerLibAddress: felt):
 end
 
 @event
@@ -67,86 +58,64 @@ func FeeManagerSet(feeManagerAddress: felt):
 end
 
 @event
-func DeployComptrollerProxy(comptrollerLibAddress: felt):
+func OracleSet(feeManagerAddress: felt):
 end
 
 @event
-func DeployVaultProxy(event_type: felt, asset_manager: felt):
+func VaultInitalized(vaultLibAddress: felt):
 end
 
-#maybe allowed tracked asset as bool mapping since we need pricefeed for each asset we track
-
+const APPROVE_SELECTOR = 949021990203918389843157787496164629863144228991510976554585288817234167820
 #
 # Storage
 #
 
-
 @storage_var
-func latest_comptroller_version() -> (res : felt):
-end
-
-
-@storage_var
-func comptroller_address(version: felt) -> (res : felt):
-end
-
-
-@storage_var
-func comptrollerLib() -> (comptrollerLibAddress: felt):
+func comptroller() -> (res: felt):
 end
 
 @storage_var
-func vaultLib() -> (vaultLibAddress: felt):
+func oracle() -> (res: felt):
 end
 
 @storage_var
-func FeeManager() -> (FeeManagerAddress: felt):
+func feeManager() -> (res: felt):
 end
 
-
-# Define a storage variable.
 @storage_var
-func vault_comptroller(vault:felt) -> (res : felt):
+func policyManager() -> (res: felt):
+end
+
+@storage_var
+func integrationManager() -> (res: felt):
+end
+
+@storage_var
+func valueInterpretor() -> (res: felt):
+end
+
+@storage_var
+func primitivePriceFeed() -> (res: felt):
+end
+
+@storage_var
+func derivativePriceFeed() -> (res: felt):
 end
 
 
-@view
-func get_latest_comptroller_version{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        ) -> (version: felt, address: felt): 
-    let (version) = latest_comptroller_version.read()
-    let (comptroller) = comptroller_address.read(version)
-    return (version=version, address=comptroller)
+@storage_var
+func stackingVault() -> (res : felt):
 end
 
-
-@external
-func add_comptroller_version{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        comptroller: felt):
-    
-    let (cnt) = latest_comptroller_version.read()
-    let new_cnt = cnt + 1
-    latest_comptroller_version.write(new_cnt)
-    comptroller_address.write(new_cnt, comptroller)
-
-    return ()
+@storage_var
+func daoTreasury() -> (res : felt):
 end
 
 
 
-
-# set the balance by the given amount.
-@external
-func set_vault_comptroller{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        vault : felt, comptroller_address: felt):
-    vault_comptroller.write(vault, comptroller_address)
-    return ()
-end
-
-# Returns the current comptrollerAddress
-@view
-func get_vault_comptroller{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(     vault : felt) -> (comptroller: felt):
-    let (comptroller) = vault_comptroller.read(vault)
-    return (comptroller=comptroller)
+struct integration:
+    member contract : felt
+    member selector : felt
 end
 
 #
@@ -154,24 +123,25 @@ end
 #
 
 @view
-func getComptrollerLib{
+func getComptroller{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
     }() -> (res: felt):
-    let (res:felt) = comptrollerLib.read()
+    let (res:felt) = comptroller.read()
     return(res)
 end
 
 @view
-func getVaultLib{
+func getOracle{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
     }() -> (res: felt):
-    let (res:felt) = vaultLib.read()
+    let (res:felt) = oracle.read()
     return(res)
 end
+
 
 @view
 func getFeeManager{
@@ -179,45 +149,107 @@ func getFeeManager{
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
     }() -> (res: felt):
-    let (res:felt) = FeeManager.read()
+    let (res:felt) = feeManager.read()
     return(res)
 end
 
+@view
+func getPolicyManager{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = policyManager.read()
+    return(res)
+end
 
+@view
+func getIntegrationManager{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = policyManager.read()
+    return(res)
+end
+
+@view
+func getValueInterpretor{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = valueInterpretor.read()
+    return(res)
+end
+
+@view
+func getPrimitivePriceFeed{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = primitivePriceFeed.read()
+    return(res)
+end
+
+@view
+func getDerivativePriceFeed{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = derivativePriceFeed.read()
+    return(res)
+end
+
+@view
+func getStackingVault{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+        res : felt):
+    let (res) = stackingVault.read()
+    return (res)
+end
+
+@view
+func getDaoTreasury{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+        res : felt):
+    let (res) = daoTreasury.read()
+    return (res)
+end
 
 #
 # Setters
 #
 
 @external
-func setComptrollerLib{
+func setComptroller{
         pedersen_ptr: HashBuiltin*, 
         syscall_ptr: felt*, 
         range_check_ptr
     }(
-        _comptrolleurLib: felt,
+        _comptrolleur: felt,
     ):
-    let (comptrollerLib_:felt) = comptrollerLib.read()
-    with_attr error_message("setComptrollerLib: can only be set once"):
-        assert comptrollerLib_ = 0
+    let (comptroller_:felt) = comptroller.read()
+    with_attr error_message("setComptroller: can only be set once"):
+        assert comptroller_ = 0
     end
-    comptrollerLib.write(_comptrolleurLib)
+    comptroller.write(_comptrolleur)
     return ()
 end
 
 @external
-func setVaultLib{
+func setOracle{
         pedersen_ptr: HashBuiltin*, 
         syscall_ptr: felt*, 
         range_check_ptr
     }(
-        _vaultLib: felt,
+        _oracle: felt,
     ):
-    let (vaultLib_:felt) = vaultLib.read()
-    with_attr error_message("setVaultLib: can only be set once"):
-        assert vaultLib_ = 0
+    let (oracle_:felt) = oracle.read()
+    with_attr error_message("setOracle: can only be set once"):
+        assert oracle_ = 0
     end
-    comptrollerLib.write(_vaultLib)
+    oracle.write(_oracle)
     return ()
 end
 
@@ -229,86 +261,317 @@ func setFeeManager{
     }(
         _feeManager: felt,
     ):
-    let (feeManager_:felt) = FeeManager.read()
+    let (feeManager_:felt) = feeManager.read()
     with_attr error_message("setFeeManager: can only be set once"):
         assert feeManager_ = 0
     end
-    FeeManager.write(_feeManager)
+    feeManager.write(_feeManager)
     return ()
 end
 
-
-#
-# Create new Fund
-#
 
 @external
-func createNewFund{
-        syscall_ptr: felt*, 
+func setPolicyManager{
         pedersen_ptr: HashBuiltin*, 
+        syscall_ptr: felt*, 
         range_check_ptr
     }(
-    _fundName: felt,
-    _fundSymbol:felt,
-    _denominationAsset: felt,
+        _policyManager: felt,
     ):
-    let (feeManager_:felt) = FeeManager.read()
-    let (vaultLib_:felt) = vaultLib.read()
-    let (comptrollerLib_:felt) = comptrollerLib.read()
-   
-    # with_attr error_message("createNewFund: dependencies not set"):
-    #     assert_not_zero(feeManager_ * vaultLib_ * comptrollerLib_)
-    # end
-
-    let (assetManager_: felt) = get_caller_address()
-    #TODO check allowed denomination asset (do we have a pricefeed for it)
-    
-    #first deploy comptroller proxy, put the address to delegate call (comptrolleurLib).
-    # DeployComptrollerProxy.emit(comptrollerLib_)
-    
-    #second deploy vault proxy, put the address to delegate call (vaultLib).
-    # TODO - consider choosing comptroller version
-    DeployVaultProxy.emit(event_type=VaultFactoryEvents.FUND_CREATED, asset_manager=assetManager_)
-
-    #Then invoke proxy initialize function and setup fund config for fee manager 
-    #Since we are deploying comptrolleur & vault offchain, we can't access the address contract directly, so the function bellow will be called 
+    let (policyManager_:felt) = policyManager.read()
+    with_attr error_message("setPolicyManager: can only be set once"):
+        assert policyManager_ = 0
+    end
+    policyManager.write(_policyManager)
     return ()
 end
 
+@external
+func setIntegrationManager{
+        pedersen_ptr: HashBuiltin*, 
+        syscall_ptr: felt*, 
+        range_check_ptr
+    }(
+        _integrationManager: felt,
+    ):
+    let (integrationManager_:felt) = integrationManager.read()
+    with_attr error_message("setPolicyManager: can only be set once"):
+        assert integrationManager_ = 0
+    end
+    integrationManager.write(_integrationManager)
+    return ()
+end
+
+@external
+func setValueInterpretort{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _valueInterpretor : felt):
+    valueInterpretor.write(_valueInterpretor)
+    return ()
+end
+
+@external
+func setPrimitivePriceFeed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _primitivePriceFeed : felt):
+    primitivePriceFeed.write(_primitivePriceFeed)
+    return ()
+end
+
+@external
+func setDerivativePriceFeed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _derivativePriceFeed : felt):
+    derivativePriceFeed.write(_derivativePriceFeed)
+    return ()
+end
+
+@external
+func setStackingVault{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        amount : felt):
+    stackingVault.write(amount)
+    return ()
+end
+
+@external
+func setDaoTreasury{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        amount : felt):
+    daoTreasury.write(amount)
+    return ()
+end
+
+@external
+func addGlobalAllowedAsset{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_assetList_len:felt, _assetList:felt*) -> ():
+    alloc_locals
+    if _assetList_len == 0:
+        return ()
+    end
+    let (integrationManager_:felt) = integrationManager.read()
+    with_attr error_message("addGlobalAllowedAsset: integrationManager dependency not set"):
+        assert_not_zero(integrationManager_)
+    end
+
+    let asset_:felt = [_assetList]
+    IIntegrationManager.setAvailableAsset(integrationManager_, asset_)
+    IIntegrationManager.setAvailableIntegration(integrationManager_, asset_, APPROVE_SELECTOR)
+
+    let newAssetList_len:felt = _assetList_len -1
+    let newAssetList:felt* = _assetList + 1
+
+    return addGlobalAllowedAsset(
+        _assetList_len= newAssetList_len,
+        _assetList= newAssetList,
+        )
+end
+
+@external
+func addGlobalAllowedIntegration{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_integrationList_len:felt, _integrationList:integration*) -> ():
+    alloc_locals
+    if _integrationList_len == 0:
+        return ()
+    end
+    let (integrationManager_:felt) = integrationManager.read()
+    with_attr error_message("addGlobalAllowedIntegration: integrationManager dependency not set"):
+        assert_not_zero(integrationManager_)
+    end
+
+    let integration_:integration = [_integrationList]
+    IIntegrationManager.setAvailableIntegration(integrationManager_, integration_.contract, integration_.selector)
+
+    let newIntegrationList_len:felt = _integrationList_len -1
+    let newIntegrationList:integration* = _integrationList + 1
+
+    return addGlobalAllowedIntegration(
+        _integrationList_len= newIntegrationList_len,
+        _integrationList= newIntegrationList,
+        )
+end
+
+
+
+# Initialize a vault freshly deployed
 @external
 func initializeFund{
         syscall_ptr: felt*, 
         pedersen_ptr: HashBuiltin*, 
         range_check_ptr
     }(
-    #initializer Arg for comptroller(look Icomptroller)
-    _vaultProxy: felt,
-    _denominationAsset:felt,
-    _assetManager:felt,
-
-    #initializer Arg for comptroller(look Icomptroller)
-    _comptrollerProxy:felt,
+    #vault initializer
+    _vault: felt,
     _fundName:felt,
     _fundSymbol:felt,
+    _denominationAsset:felt,
     _positionLimitAmount:Uint256,
 
-    #tab with entrance fee, exit fees performance fees and management fees value
-    # _feeConfig: felt*,
+    #fee config Initializer
+    _feeConfig_len: felt,
+    _feeConfig: felt*,
+
+    #allowed asset to be tracked
+    _assetList_len: felt,
+    _assetList: felt*,
+
+    #allowed protocol to interact with 
+    _integration_len: felt,
+    _integration: integration*,
+
+    #min/max amount for depositors (with the denomination asset)
+    _minAmount:Uint256,
+    _maxAmount:Uint256,
+
+    #Timelock before selling shares
+    _timelock:felt,
+
+    #allowed depositors 
+    _isPublic:felt,
+
     ):
-    let (feeManager_:felt) = FeeManager.read()
-    let (vaultLib_:felt) = vaultLib.read()
-    let (comptrollerLib_:felt) = comptrollerLib.read()
-    with_attr error_message("createNewFund: dependencies not set"):
-        assert_not_zero(feeManager_ * vaultLib_ * comptrollerLib_)
+    alloc_locals
+
+    let (comptroller_:felt) = comptroller.read()
+    let (oracle_:felt) = oracle.read()
+    let (feeManager_:felt) = feeManager.read()
+    let (policyManager_:felt) = policyManager.read()
+    let (integrationManager_:felt) = integrationManager.read()
+
+    with_attr error_message("initializeFund: dependencies not set"):
+        assert_not_zero(feeManager_  * comptroller_ * oracle_ * policyManager_ * integrationManager_)
     end
 
-    #TODO check allowed denomination asset (do we have a pricefeed for it)
+    let (name_:felt) = IVault.getName(_vault)
+    with_attr error_message("initializeFund: vault already initialized"):
+        assert_not_equal(name_,0)
+    end
 
-    # IVault.proxyInitializer(_fundName, _fundSymbol, _comptrollerProxy, _positionLimitAmount)
+    with_attr error_message("initializeFund: can not set value to 0"):
+        assert_not_zero(_vault * _fundName * _fundSymbol * _denominationAsset)
+    end
 
-    # IComptroller.proxyInitializer(_denominationAsset, _assetManager, _vaultProxy)
+    let (assetManager_: felt) = get_caller_address()
+    IIntegrationManager.checkIsAssetAvailable(integrationManager_, _denominationAsset)
+    #VaultProxy init
+    IVault.initializer(_vault, _fundName, _fundSymbol, assetManager_, _denominationAsset, _positionLimitAmount)
 
-    #TODO initalize feeManager config for this fund
+
+    #Set feeconfig for vault
+    let entrance_fee = _feeConfig[0]
+    let (is_entrance_fee_not_enabled) = __is_zero(entrance_fee)
+    if is_entrance_fee_not_enabled == 1 :
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.ENTRANCE_FEE_ENABLED, 0)
+    else:
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.ENTRANCE_FEE_ENABLED, 1)
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.ENTRANCE_FEE, entrance_fee)
+    end
+
+    let exit_fee = _feeConfig[1]
+    let (is_exit_fee_not_enabled) = __is_zero(exit_fee)
+    if is_exit_fee_not_enabled == 1 :
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.EXIT_FEE_ENABLED, 0)
+    else:
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.EXIT_FEE_ENABLED, 1)
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.EXIT_FEE, exit_fee)
+    end
+
+    let performance_fee = _feeConfig[2]
+    let (is_performance_fee_not_enabled) = __is_zero(performance_fee)
+    if is_performance_fee_not_enabled == 1 :
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 0)
+    else:
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 1)
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE, performance_fee)
+    end
+
+    let management_fee = _feeConfig[3]
+    let (is_management_fee_not_enabled) = __is_zero(management_fee)
+    if is_management_fee_not_enabled == 1 :
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 0)
+    else:
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 1)
+        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE, management_fee)
+    end
+
+    IPolicyManager.setMaxminAmount(policyManager_, _vault, _maxAmount, _minAmount)
+
+    # Policy config for fund
+    __addAllowedAsset(_assetList_len, _assetList, _vault, integrationManager_, policyManager_)
+    __addAllowedIntegration(_integration_len, _integration, _vault, integrationManager_, policyManager_)
+    IPolicyManager.setMaxminAmount(policyManager_, _vault, _maxAmount, _minAmount)
+    IPolicyManager.setTimeLock(policyManager_, _vault, _timelock)
+    IPolicyManager.setIsPublic(policyManager_, _vault, _isPublic)
     return ()
+end
+
+func __is_zero{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        x: felt)-> (res:felt):
+    if x == 0:
+        return (res=1)
+    end
+    return (res=0)
+end
+
+func __addAllowedAsset{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_assetList_len:felt, _assetList:felt*, _vault:felt, _integrationManager:felt, _policyManager:felt) -> ():
+    alloc_locals
+    if _assetList_len == 0:
+        return ()
+    end
+    let asset_:felt = [_assetList]
+    let (isAllowed_) = IIntegrationManager.checkIsAssetAvailable(_integrationManager, asset_)
+    with_attr error_message("__addAllowedAsset: asset not supported by Magnety"):
+        assert_not_zero(isAllowed_)
+    end
+    #allow track asset and already allow approve for any asset usecase (&&&&&& selector approve keccack)
+    IPolicyManager.setAllowedIntegration(_policyManager, _vault, asset_, APPROVE_SELECTOR)
+    IPolicyManager.setAllowedTrackedAsset(_policyManager, _vault, asset_)
+
+    let newAssetList_len:felt = _assetList_len -1
+    let newAssetList:felt* = _assetList + 1
+
+    return __addAllowedAsset(
+        _assetList_len= newAssetList_len,
+        _assetList= newAssetList,
+        _vault=_vault,
+        _integrationManager=_integrationManager,
+        _policyManager=_policyManager
+    )
+end
+
+func __addAllowedIntegration{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_integration_len: felt, _integration: integration*, _vault:felt, _integrationManager:felt, _policyManager:felt) -> ():
+    alloc_locals
+    if _integration_len == 0:
+        return ()
+    end
+
+    let integration_:integration = [_integration]
+    let (isAllowed_) = IIntegrationManager.checkIsIntegrationAvailable(_integrationManager, integration_.contract, integration_.selector)
+    with_attr error_message("__addAllowedAsset: integration not supported by Magnety"):
+        assert_not_zero(isAllowed_)
+    end
+
+    #allow integration to be used 
+    IPolicyManager.setAllowedIntegration(_policyManager, _vault, integration_.contract, integration_.selector)
+
+    let newIntegration_len:felt = _integration_len -1
+    let newIntegration:integration* = _integration + 1
+
+    return __addAllowedIntegration(
+        _integration_len= newIntegration_len,
+        _integration= newIntegration,
+        _vault=_vault,
+        _integrationManager=_integrationManager,
+        _policyManager=_policyManager
+    )
 end
 

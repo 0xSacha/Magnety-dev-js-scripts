@@ -62,6 +62,11 @@ func uint256_div{range_check_ptr}(x : Uint256, y : Uint256) -> (res : Uint256):
     return (res=res)
 end
 
+func uint256_mul_low{range_check_ptr}(x : Uint256, y : Uint256) -> (res : Uint256):
+    let (res:Uint256, high:Uint256) = uint256_mul(x, y)
+    return (res=res)
+end
+
 func uint256_percent{pedersen_ptr : HashBuiltin*, range_check_ptr}(
     x : Uint256, percent : Uint256
 ) -> (res : Uint256):

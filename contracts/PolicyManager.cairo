@@ -1,4 +1,3 @@
-# Declare this file as a StarkNet contract.
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
@@ -7,50 +6,141 @@ struct MaxMin:
     member max: Uint256
     member min: Uint256
 end
+
 # Define a storage variable.
 @storage_var
-func maxmin_amount(vault: felt) -> (res: MaxMin):
+func vaultFactory() -> (vaultFactoryAddress : felt):
 end
 
-# TODO - should give ACCESS only to XXX
-# set the balance by the given amount.
+@storage_var
+func maxminAmount(vault: felt) -> (res: MaxMin):
+end
+
+@storage_var
+func timeLock(vault: felt) -> (res: felt):
+end
+
+@storage_var
+func isAllowedIntegration(vault: felt, contract_addr: felt, selector: felt) -> (res : felt):
+end
+
+@storage_var
+func isAllowedTrackedAsset(vault: felt, asset: felt) -> (res : felt):
+end
+
+@storage_var
+func isPublic(vault: felt) -> (res : felt):
+end
+
+
+
+
+#
+# Modifiers
+#
+
+func onlyVaultFactory{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}():
+    let (vaultFactory_) = vaultFactory.read()
+    let (caller_) = get_caller_address()
+    with_attr error_message("onlyVaultFactory: only callable by the vaultFactory"):
+        assert (vaultFactory_ - caller_) = 0
+    end
+    return ()
+end
+
+#
+# Constructor
+#
+
+@constructor
+func constructor{
+        syscall_ptr : felt*,
+        pedersen_ptr : HashBuiltin*,
+        range_check_ptr
+    }(
+        _vaultFactory: felt,
+    ):
+    vaultFactory.write(_vaultFactory)
+    return ()
+end
+
+
+
+
+# Getters
+@view
+func getMaxminAmount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault: felt) -> (
+        max: Uint256, min: Uint256):
+    let (res) = maxminAmount.read(_vault)
+    return (max=res.max, min=res.min)
+end
+
+@view
+func getTimelock{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault: felt) -> (
+        res:felt):
+    let (res) = timeLock.read(_vault)
+    return (res=res)
+end
+
+@view
+func checkIsPublic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault: felt) -> (
+        res:felt):
+    let (res) = isPublic.read(_vault)
+    return (res=res)
+end
+
+@view
+func checkIsAllowedTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault: felt, _asset: felt) -> (res:felt):
+    let (res) = isAllowedTrackedAsset.read(vault, _asset)
+    return (res=res)
+end
+
+@view
+func checkIsAllowedIntegration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault: felt, _contract: felt, _selector: felt
+        ) -> (res: felt): 
+    let (res) = isAllowedIntegration.read(_vault, _contract, _selector)
+    return (res=res)
+end
+
+
+
+# Setters 
 @external
-func set_maxmin_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        vault: felt, max : Uint256, min:Uint256):
-    
+func setMaxminAmount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _vault: felt, _max: Uint256, _min:Uint256):
+    onlyVaultFactory()
     maxmin_amount.write(vault, MaxMin(max, min))
     return ()
 end
 
-# TODO - should give ACCESS only to XXX
-# Returns the current max_amount
-@view
-func get_maxmin_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(vault: felt) -> (
-        max : Uint256, min: Uint256):
-    let (res) = maxmin_amount.read(vault)
-    return (max=res.max, min=res.min)
-end
-
-
-# Define a storage variable.
-@storage_var
-func min_amount() -> (res : felt):
-end
-
-# set the balance by the given amount.
 @external
-func set_min_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        amount : felt):
-    min_amount.write(amount)
+func setAllowedIntegration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _vault: felt, _contract: felt, _selector: felt):
+    onlyVaultFactory()
+    isAllowedIntegration.write(_vault, _contract, _selector, 1)
     return ()
 end
 
-# Returns the current min_amount
-@view
-func get_min_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-        res : felt):
-    let (res) = min_amount.read()
-    return (res)
+@external
+func setAllowedTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _vault: felt, _asset: felt):
+    onlyVaultFactory()
+    isAllowedTrackedAsset.write(vault, _asset, 1)
+    return ()
 end
 
+@external
+func setTimelock{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _vault: felt, _blocAmount: felt):
+    onlyVaultFactory()
+    timeLock.write(_vault, _blocAmount)
+    return ()
+end
 
+@external
+func setIsPublic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _vault: felt, _isPublic: felt):
+    onlyVaultFactory()
+    isPublic.write(_vault, _isPublic)
+    return ()
+end

@@ -4,6 +4,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.starknet.common.syscalls import (
     get_caller_address, 
     get_contract_address,
+    call_contract,
 )
 
 from starkware.cairo.common.math import (
@@ -74,21 +75,49 @@ from shareBaseToken import (
     initializeShares,
 )
 
-from vaultLibBaseCore import (
+#
+# Storage
+#
 
-    comptrolleur,
-    # vaultFactory,
-    trackedAssets,
-    trackedAssetsLength,
-    assetToIsTracked,
-    assetToId,
+@storage_var
+func vaultFactory() -> (res : felt):
+end
 
-    positionLimit,
+@storage_var
+func comptroller() -> (res : felt):
+end
 
-    init,
-    onlyVaultComptrolleur,
-    # onlyVaultFactory,
-)
+@storage_var
+func trackedAssets(id : felt) -> (res : felt):
+end
+
+@storage_var
+func assetToId(asset : felt) -> (res : felt):
+end
+
+@storage_var
+func trackedAssetsLength() -> (res : felt):
+end
+
+@storage_var
+func assetToIsTracked(assetsAddress : felt) -> (res : felt):
+end
+
+@storage_var
+func positionLimit() -> (res : Uint256):
+end
+
+@storage_var
+func denominationAsset() -> (res : felt):
+end
+
+@storage_var
+func assetManager() -> (res : felt):
+end
+
+@storage_var
+func isActivated() -> (res : felt):
+end
 
 
 #
@@ -124,6 +153,7 @@ const TRUE = 1
 #
 
 
+
 @view
 func getAB{
         syscall_ptr: felt*,
@@ -134,6 +164,49 @@ func getAB{
     
 end
 
+
+@view
+func getAssetManager{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = assetManager.read()
+    return (res=res)
+end
+
+@view
+func getdenominationAsset{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = denominationAsset.read()
+    return (res=res)
+end
+
+
+@view
+func checkIsActivated{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = isActivated.read()
+    return (res=res)
+end
+
+
+@view
+func getVaultFactory{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = vaultFactory.read()
+    return (res)
+    
+end
 
 @view
 func getAssetBalance{
@@ -218,13 +291,13 @@ func getPositionsLimit{
 end
 
 @view
-func getComptrolleur{
+func getcomptroller{
         syscall_ptr : felt*, 
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
-    }() -> (comptrolleurAd: felt):
-    let (comptrolleurAd: felt) = comptrolleur.read()
-    return (comptrolleurAd)
+    }() -> (comptrollerAd: felt):
+    let (comptrollerAd: felt) = comptroller.read()
+    return (comptrollerAd)
 end
 
 #
@@ -328,6 +401,29 @@ func getMintedBlock{
 end
 
 #
+# Modifiers
+#
+
+func onlyComptroller{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}():
+    let (comptroller_) = comptroller.read()
+    let (caller_) = get_caller_address()
+    with_attr error_message("onlyComptroller: only callable by the comptroller"):
+        assert (comptroller_ - caller_) = 0
+    end
+    return ()
+end
+
+func onlyVaultFactory{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}():
+    let (vaultFactory_) = vaultFactory.read()
+    let (caller_) = get_caller_address()
+    with_attr error_message("onlyVaultFactory: only callable by the vaultFactory"):
+        assert (vaultFactory_ - caller_) = 0
+    end
+    return ()
+end
+
+
+#
 # Constructor
 #
 @constructor
@@ -336,10 +432,17 @@ func constructor{
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
     }(
-        # _vaultFactory: felt,
+        _vaultFactory: felt,
+        _comptroller:felt,
     ):
-    # initializeShares(_fundName, _symbol)
-    # init(_comptrolleur, _positionLimitAmount)
+    with_attr error_message("constructor: cannot set the vaultFactory to the zero address"):
+        assert_not_zero(_vaultFactory)
+    end
+    with_attr error_message("constructor: cannot set the comptroller to the zero address"):
+        assert_not_zero(_comptroller)
+    end
+    vaultFactory.write(_vaultFactory)
+    comptroller.write(_comptroller)
     return ()
 end
 
@@ -347,30 +450,43 @@ end
 # Initializer
 #
 @external
-func proxyInitializer{
+func initializer{
         syscall_ptr : felt*,
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
     }(
         _fundName: felt,
-        _symbol: felt,
-        _comptrolleur: felt,
+        _fundSymbol: felt,
+        _assetManager: felt,
+        _denominationAsset: felt,
         _positionLimitAmount: Uint256,
     ):
-    # onlyVaultFactory()
-    initializeShares(_fundName, _symbol)
-    init(_comptrolleur, _positionLimitAmount)
+    onlyVaultFactory()
+    let (currentComptroller_:felt) = getcomptroller()
+    with_attr error_message("proxyInitializer: proxy already initialized"):
+        assert currentComptroller_ = 0
+    end
+    initializeShares(_fundName, _fundSymbol)
+    assetManager.write(_assetManager)
+    denominationAsset.write(_denominationAsset)
+    __addTrackedAsset(_denominationAsset)
+    uint256_check(_positionLimitAmount)
+    positionLimit.write(_positionLimitAmount)
     return ()
 end
 
 @external
-func setComptrolleur{
-        syscall_ptr: felt*, 
-        pedersen_ptr: HashBuiltin*, 
+func activate{
+        syscall_ptr : felt*,
+        pedersen_ptr : HashBuiltin*,
         range_check_ptr
-    }() :
-    let (caller: felt) = get_caller_address()
-    comptrolleur.write(caller)
+    }():
+    onlyComptroller()
+    let (isActivated_:felt) = isActivated.read()
+    with_attr error_message("activate: vault already activated"):
+        assert isActivated_ = 0
+    end
+    isActivated.write(1)
     return ()
 end
 
@@ -386,7 +502,7 @@ func receiveValidatedVaultAction{
         _actionData:felt*,
     ):
     alloc_locals
-    # onlyVaultComptrolleur()
+    conlyComptroller()
     if  _action == VaultAction.AddTrackedAsset : 
         __executeVaultActionAddTrackedAsset(_actionData)
         return ()
@@ -410,7 +526,12 @@ func receiveValidatedVaultAction{
                                             if _action == VaultAction.WithdrawAssetTo:
                                                 __executeVaultActionWithdrawAssetTo(_actionData)
                                                 return ()
-                                            end
+                                                else:
+                                                    if _action == VaultAction.ExecuteCall:
+                                                        __executeVaultActionExecuteCall(_actionData)
+                                                        return ()
+                                                    end
+                                                end
                                         end
                                 end
                         end
@@ -425,52 +546,6 @@ end
 # internal
 #
 
-
-
-
-
-func addTrackedAsset{
-        pedersen_ptr: HashBuiltin*, 
-        syscall_ptr: felt*, 
-        range_check_ptr
-    }(
-        _asset: felt, 
-    ):
-    onlyVaultComptrolleur()
-    __addTrackedAsset(_asset)
-    return ()
-end
-
-
-func burnShares{
-        pedersen_ptr: HashBuiltin*, 
-        syscall_ptr: felt*, 
-        range_check_ptr
-    }(
-        _amount: Uint256,
-        _tokenId:Uint256,
-    ):
-    alloc_locals
-    let(_comptrolleur:felt) = comptrolleur.read()
-    let(_caller:felt) = get_caller_address()
-    let(_shareowner:felt)  = ownerOf(_tokenId)
-    # TODO - caller is not clear
-    # with_attr error_message("burnShares: approve caller is not owner nor approved for all"):
-    #     assert (_comptrolleur - _caller) * (_shareowner - _caller) = 0
-    # end
-
-    let(_sharesAmount:Uint256) = sharesBalance(_tokenId)
-    let (equal_) = uint256_eq(_sharesAmount, _amount)
-    if equal_ == TRUE:
-        burn(_tokenId)
-        return ()
-    else:
-        subShares(_tokenId, _amount)
-        return ()
-    end
-end
-
-
 func mintShares{
         pedersen_ptr: HashBuiltin*, 
         syscall_ptr: felt*, 
@@ -480,7 +555,7 @@ func mintShares{
         _newSharesholder:felt,
         _sharePricePurchased:Uint256,
     ):
-    onlyVaultComptrolleur()
+    onlyComptroller()
     let (_tokenId:Uint256) = totalSupply()
    mint(_newSharesholder, _amount, _sharePricePurchased)
    return ()
@@ -495,7 +570,6 @@ end
 #
 # VAULT ACTION DISPATCH
 #
-
 
 func __executeVaultActionAddTrackedAsset{
         syscall_ptr: felt*,
@@ -525,8 +599,31 @@ func __executeVaultActionBurnShares{
     }(_actionData: felt*):
     let (tokenId_:Uint256) = felt_to_uint256(_actionData[0])
     let (amount_:Uint256) = felt_to_uint256(_actionData[1])
-    burnShares(amount_, tokenId_)
+    __burnShares(amount_, tokenId_)
     return ()
+end
+
+func __burnShares{
+        pedersen_ptr: HashBuiltin*, 
+        syscall_ptr: felt*, 
+        range_check_ptr
+    }(
+        _amount: Uint256,
+        _tokenId:Uint256,
+    ):
+    alloc_locals
+    let(_comptroller:felt) = comptroller.read()
+    let(_caller:felt) = get_caller_address()
+    let(_shareowner:felt)  = ownerOf(_tokenId)
+    let(_sharesAmount:Uint256) = sharesBalance(_tokenId)
+    let (equal_) = uint256_eq(_sharesAmount, _amount)
+    if equal_ == TRUE:
+        burn(_tokenId)
+        return ()
+    else:
+        subShares(_tokenId, _amount)
+        return ()
+    end
 end
 
 func __executeVaultActionMintShares{
@@ -537,8 +634,22 @@ func __executeVaultActionMintShares{
     let newSharesholder_:felt = _actionData[0]
     let (amount_:Uint256) = felt_to_uint256(_actionData[1])
     let (sharePricePurchased_:Uint256) = felt_to_uint256(_actionData[2])
-    mintShares(amount_, newSharesholder_, sharePricePurchased_)
+    __mintShares(amount_, newSharesholder_, sharePricePurchased_)
     return ()
+end
+
+func __mintShares{
+        pedersen_ptr: HashBuiltin*, 
+        syscall_ptr: felt*, 
+        range_check_ptr
+    }(
+        _amount: Uint256,
+        _newSharesholder:felt,
+        _sharePricePurchased:Uint256,
+    ):
+    let (_tokenId:Uint256) = totalSupply()
+   mint(_newSharesholder, _amount, _sharePricePurchased)
+   return ()
 end
 
 
@@ -565,6 +676,31 @@ func __executeVaultActionWithdrawAssetTo{
     __withdrawAssetTo(asset_, target_, amount_)
     return ()
 end
+
+func __executeVaultActionExecuteCall{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_actionData: felt*):
+    alloc_locals
+    
+    let contract_:felt = _actionData[0]
+    let selector_:felt = _actionData[1]
+    let callData_len:felt = _actionData[2]
+
+    let (callData: felt*) = alloc()
+    memcpy(callData, _actionData + 3, callData_len)
+
+     # execute call
+    let response = call_contract(
+        contract_address=contract_,
+        function_selector=selector_,
+        calldata_size=message.callData_len,
+        calldata=callData)
+    return ()
+end
+
+
 
 #
 # VAULT ACTION 
