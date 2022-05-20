@@ -2,12 +2,14 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.starknet.common.syscalls import get_caller_address
+
 from openzeppelin.utils.constants import (
     TRUE, FALSE,
 )
 
 @storage_var
-func vaultFactory(vaultFactoryAddress: felt) -> (res: felt):
+func vaultFactory() -> (res: felt):
 end
 
 @storage_var
@@ -21,15 +23,6 @@ end
 @storage_var
 func integrationContract(contractAddress: felt, selector: felt) -> (res: felt):
 end
-
-@storage_var
-func isPontisPricefeed(assetAddress: felt) -> (res: felt):
-end
-
-@storage_var
-func primitive(assetAddress: felt) -> (res: felt):
-end
-
 
 #
 # Modifiers
@@ -65,13 +58,6 @@ end
 #
 
 
-@view
-func checkIsPontisPricefeed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(vault: felt, contract_addr: felt, selector: felt
-        ) -> (res: felt): 
-    
-    let (res) = allowed_integration.read(vault, contract_addr, selector)
-    return (res=res)
-end
 
 @view
 func checkIsAssetAvailable{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_asset: felt) -> (res: felt): 
@@ -81,7 +67,13 @@ end
 
 @view
 func checkIsIntegrationAvailable{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_contract: felt, _selector: felt) -> (res: felt): 
-    let (res) = isAssetAvailable.read(_asset)
+    let (res) = isIntegrationAvailable.read(_contract, _selector )
+    return (res=res)
+end
+
+@view
+func getIntegration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_contract: felt, _selector: felt) -> (res: felt): 
+    let (res) = integrationContract.read(_contract, _selector)
     return (res=res)
 end
 
@@ -91,32 +83,18 @@ end
 #
 
 @external
-func setIntegration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        contract_addr: felt, selector: felt, integration: felt):
+func setAvailableAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _asset: felt):
     onlyVaultFactory()
-    integrationContract.write(contract_addr, selector, integration)
+    isAssetAvailable.write(_asset, 1)
     return ()
 end
 
 @external
-func setPriceFeed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        assetAddress: felt, selector: felt, integration: felt):
+func setAvailableIntegration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _contract: felt, _selector: felt, _integration: felt):
     onlyVaultFactory()
-    integrationContract.write(contract_addr, selector, integration)
+    isIntegrationAvailable.write(_contract, _selector, 1)
+    integrationContract.write(_contract, _selector, _integration)
     return ()
 end
-
-#
-# Externals
-#
-
-
-@external
-func set_integration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        contract_addr: felt, selector: felt, integration: felt):
-    # TODO - should insert authority validation
-    allowed_integration.write(vault, contract_addr, selector, enable)
-    return ()
-end
-
-

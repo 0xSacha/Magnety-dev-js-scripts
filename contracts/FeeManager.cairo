@@ -9,7 +9,7 @@ from starkware.starknet.common.syscalls import (
 )
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from contracts.interface.IFeeManager import FeeConfig
+from contracts.interfaces.IFeeManager import FeeConfig
 
 
 

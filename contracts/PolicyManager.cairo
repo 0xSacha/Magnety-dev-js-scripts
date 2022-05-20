@@ -2,6 +2,8 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.uint256 import Uint256
+from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
+
 struct MaxMin:
     member max: Uint256
     member min: Uint256
@@ -91,7 +93,7 @@ end
 
 @view
 func checkIsAllowedTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault: felt, _asset: felt) -> (res:felt):
-    let (res) = isAllowedTrackedAsset.read(vault, _asset)
+    let (res) = isAllowedTrackedAsset.read(_vault, _asset)
     return (res=res)
 end
 
@@ -109,7 +111,7 @@ end
 func setMaxminAmount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _vault: felt, _max: Uint256, _min:Uint256):
     onlyVaultFactory()
-    maxmin_amount.write(vault, MaxMin(max, min))
+    maxminAmount.write(_vault, MaxMin(_max, _min))
     return ()
 end
 
@@ -125,7 +127,7 @@ end
 func setAllowedTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _vault: felt, _asset: felt):
     onlyVaultFactory()
-    isAllowedTrackedAsset.write(vault, _asset, 1)
+    isAllowedTrackedAsset.write(_vault, _asset, 1)
     return ()
 end
 

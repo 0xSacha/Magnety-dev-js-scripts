@@ -1,15 +1,13 @@
 %lang starknet
 
-from contracts.libraries.structs.PoolPair import PoolPair
 
-
-token_0_address
+struct PoolPair:
+    member token_0_address: felt
+    member token_1_address: felt
+end
 @contract_interface
 namespace IARFPoolFactory:
     func getPool(pair: PoolPair) -> (pool_address: felt):
-    end
-
-    func getPair(pool_address : felt) -> (pair: PoolPair):
     end
     
     func getPools() -> (pools_len: felt, pools: felt*):

@@ -7,10 +7,22 @@ from starkware.starknet.common.syscalls import (
     get_contract_address,
     get_caller_address,
 )
-
+from starkware.cairo.common.uint256 import Uint256
+from starkware.cairo.common.uint256 import (
+    uint256_sub,
+    uint256_check,
+    uint256_le,
+    uint256_eq,
+    uint256_add,
+    uint256_mul,
+    uint256_unsigned_div_rem,
+)
+from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from contracts.interface.IPontisPriceFeedMixin import IPontisPriceFeedMixin
-from contracts.interface.IVaultFactory import IVaultFactory
+from interfaces.IPontisPriceFeedMixin import IPontisPriceFeedMixin
+from interfaces.IVaultFactory import IVaultFactory
+from interfaces.IDerivativePriceFeed import IDerivativePriceFeed
+
 from starkware.cairo.common.math import assert_not_zero
 
 
@@ -64,20 +76,20 @@ func calculAssetValue{
     if  _baseAsset == _denominationAsset:
         return (res=_amount)
     end
+    let (vaultFactory_:felt) = vaultFactory.read()
+    let (primitivePriceFeed_:felt) = IVaultFactory.getPrimitivePriceFeed(vaultFactory_)
+    let (isSupportedPrimitiveAsset_) = IPontisPriceFeedMixin.checkIsSupportedPrimitiveAsset(primitivePriceFeed_, _baseAsset)
 
-    let (isSupportedPrimitiveAsset_) = IPontisPriceFeedMixin.checkIsSupportedPrimitiveAsset(_baseAsset)
-
-    if isSupportedPrimitiveAsset_ = 1:
-        let (primitivePriceFeed_:felt) = IVaultFactory.getPrimitivePriceFeed(vaultFactory)
-        let (res:Uint256) = IPontisPriceFeedMixin.calcAssetValueBmToDeno(primitivePriceFeed_, _baseAsset, _amount, _quoteAsset)
+    if isSupportedPrimitiveAsset_ == 1:
+        let (res:Uint256) = IPontisPriceFeedMixin.calcAssetValueBmToDeno(primitivePriceFeed_, _baseAsset, _amount, _denominationAsset)
         return(res=res)
     else:
         let (isSupportedPrimitiveAsset_) = isSupportedDerivativeAsset.read(_baseAsset)
         with_attr error_message("calculAssetValue: asset not supported"):
             assert_not_zero(isSupportedPrimitiveAsset_)
         end
-        let (derivativePriceFeed_:felt) = IVaultFactory.getDerivativePriceFeed(vaultFactory)
-        let (res:Uint256) = __calcDerivativeValue(derivativePriceFeed_, _baseAsset, _amount, _quoteAsset)
+        let (derivativePriceFeed_:felt) = IVaultFactory.getDerivativePriceFeed(vaultFactory_)
+        let (res:Uint256) = __calcDerivativeValue(derivativePriceFeed_, _baseAsset, _amount, _denominationAsset)
         return(res=res)
     end
 end
@@ -90,7 +102,7 @@ func getDerivativePriceFeed{
     }(
         _derivative: felt,
     ) -> (res:felt):
-    let (res:felt) = derivativeToPriceFeed(_derivative)
+    let (res:felt) = derivativeToPriceFeed.read(_derivative)
     return(res=res)
 end
 
@@ -102,7 +114,7 @@ func checkIsSupportedDerivativeAsset{
     }(
         _derivative: felt,
     ) -> (res:felt):
-    let (res:felt) = isSupportedDerivativeAsset(_derivative)
+    let (res:felt) = isSupportedDerivativeAsset.read(_derivative)
     return(res=res)
 end
 
@@ -152,13 +164,8 @@ func __calcDerivativeValue{
         assert underlyingsAssets_len = underlyingsAmount_len
     end
 
-    let (isSupportedPrimitiveAsset_) = IPontisPriceFeedMixin.checkIsSupportedPrimitiveAsset(_baseAsset)
-
-    if isSupportedPrimitiveAsset_ = 1:
-        let (res:Uint256) =  IPontisPriceFeedMixin.calcAssetValueBmToDeno(_baseAsset, _amount, _quoteAsset)
-        return(res=res)
-    else:
-        return __calcPrimitiveToDerivativeValue(_baseAsset, _amount, _quoteAsset);
+    let (res_:Uint256) = __calcUnderlyingDerivativeValue(underlyingsAssets_len, underlyingsAssets, underlyingsAmount_len, underlyingsAmount, _denominationAsset)
+    return(res=res_)
     end
 
 
@@ -182,9 +189,9 @@ func __calcUnderlyingDerivativeValue{
     let newUnderlyingsAssets_:felt* = _underlyingsAssets + 1
     let newUnderlyingsAmount_len_:felt = _underlyingsAmount_len -1
     let newUnderlyingsAmount_:Uint256* = _underlyingsAmount + 1
-    let (nextValue_:Uint256) = __calcUnderlyingDerivativeValue(newUnderlyingsAssets_len_, newUnderlyingsAssets_, newUnderlyingsAmount_len_, newUnderlyingsAmount_)
+    let (nextValue_:Uint256) = __calcUnderlyingDerivativeValue(newUnderlyingsAssets_len_, newUnderlyingsAssets_, newUnderlyingsAmount_len_, newUnderlyingsAmount_, _denominationAsset)
     
-    let (res_:Uint256) = uint256_checked_add(underlyingValue_, nextValue_)  
+    let (res_:Uint256, _) = uint256_add(underlyingValue_, nextValue_)  
 
     return (res=res_)
 end

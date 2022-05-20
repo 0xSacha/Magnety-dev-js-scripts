@@ -5,7 +5,7 @@ from starkware.starknet.common.syscalls import (
     get_caller_address, get_contract_address
 )
 
-from contracts.interface.IFeeManager import FeeConfig, IFeeManager
+from contracts.interfaces.IFeeManager import FeeConfig, IFeeManager
 
 from starkware.cairo.common.math import (
     assert_not_zero,
@@ -37,13 +37,13 @@ from openzeppelin.security.safemath import (
     uint256_checked_sub_le,
 )
 
-from contracts.interface.IVault import IVault
+from contracts.interfaces.IVault import IVault
 
-from contracts.interface.IComptroller import IComptroller
+from contracts.interfaces.IComptroller import IComptroller
 
-from contracts.interface.IPolicyManager import IPolicyManager
+from contracts.interfaces.IPolicyManager import IPolicyManager
 
-from contracts.interface.IIntegrationManager import IIntegrationManager
+from contracts.interfaces.IIntegrationManager import IIntegrationManager
 
 #
 # Events
@@ -462,37 +462,37 @@ func initializeFund{
     let entrance_fee = _feeConfig[0]
     let (is_entrance_fee_not_enabled) = __is_zero(entrance_fee)
     if is_entrance_fee_not_enabled == 1 :
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.ENTRANCE_FEE_ENABLED, 0)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.ENTRANCE_FEE_ENABLED, 0)
     else:
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.ENTRANCE_FEE_ENABLED, 1)
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.ENTRANCE_FEE, entrance_fee)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.ENTRANCE_FEE_ENABLED, 1)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.ENTRANCE_FEE, entrance_fee)
     end
 
     let exit_fee = _feeConfig[1]
     let (is_exit_fee_not_enabled) = __is_zero(exit_fee)
     if is_exit_fee_not_enabled == 1 :
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.EXIT_FEE_ENABLED, 0)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.EXIT_FEE_ENABLED, 0)
     else:
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.EXIT_FEE_ENABLED, 1)
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.EXIT_FEE, exit_fee)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.EXIT_FEE_ENABLED, 1)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.EXIT_FEE, exit_fee)
     end
 
     let performance_fee = _feeConfig[2]
     let (is_performance_fee_not_enabled) = __is_zero(performance_fee)
     if is_performance_fee_not_enabled == 1 :
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 0)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 0)
     else:
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 1)
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE, performance_fee)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 1)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE, performance_fee)
     end
 
     let management_fee = _feeConfig[3]
     let (is_management_fee_not_enabled) = __is_zero(management_fee)
     if is_management_fee_not_enabled == 1 :
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 0)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 0)
     else:
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 1)
-        IFeeManager.set_fee_config(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE, management_fee)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE_ENABLED, 1)
+        IFeeManager.setFeeConfig(feeManager_, _vault, FeeConfig.PERFORMANCE_FEE, management_fee)
     end
 
     IPolicyManager.setMaxminAmount(policyManager_, _vault, _maxAmount, _minAmount)

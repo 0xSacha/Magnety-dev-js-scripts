@@ -2,7 +2,8 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from contracts.interface.IVault import IVault
+from contracts.interfaces.IVault import IVault
+from starkware.cairo.common.math import assert_not_zero
 
     # func swapExactTokensForTokens(
     #     token_from_address: felt,
@@ -17,8 +18,8 @@ func runPreLogic{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
         range_check_ptr 
-    }(_vault:felt, _callData_len:felt, _callData*:felt):
-    let (incomingAsset_:felt) = [callData + 1]
+    }(_vault:felt, _callData_len:felt, _callData:felt*):
+    let incomingAsset_:felt = [_callData + 1]
     let (isTrackedAsset_:felt) = IVault.isTrackedAsset(_vault, incomingAsset_)
     with_attr error_message("swapExactTokensForTokensFromAlphaRoad: incoming Asset not tracked"):
         assert_not_zero(isTrackedAsset_)

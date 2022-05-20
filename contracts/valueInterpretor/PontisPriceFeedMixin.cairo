@@ -18,9 +18,11 @@ from starkware.cairo.common.uint256 import (
 )
 
 from contracts.utils.utils import felt_to_uint256, uint256_div, uint256_percent, uint256_mul_low
+from starkware.cairo.common.uint256 import Uint256
+from starkware.cairo.common.alloc import alloc
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from contracts.interface.IFeeManager import FeeConfig
+from interfaces.IFeeManager import FeeConfig
 from interfaces.IOracleProxy import IOracleProxy
 from interfaces.IVaultFactory import IVaultFactory
 
@@ -34,13 +36,13 @@ func isSupportedPrimitiveAsset(asset:felt) -> (res: felt):
 end
 
 @storage_var
-func aggregatorInfoFromAsset(asset:felt) -> (res: AggregatorInfo):
+func keyFromAsset(asset:felt) -> (res:felt):
 end
 
 
 struct AggregatorInfo:
     member key: felt
-    member rateAsset: felt
+    member rateAsset:felt
 end
 
 
@@ -79,7 +81,7 @@ func checkIsSupportedPrimitiveAsset{
     }(
         _asset: felt,
     ) -> (res:felt):
-    let(res:felt) = isSupportedPrimitiveAsset(_asset)
+    let(res:felt) = isSupportedPrimitiveAsset.read(_asset)
     return(res=res)
 end
 
@@ -93,24 +95,21 @@ func calcAssetValueBmToDeno{
         _amount: Uint256,
         _denominationAsset:felt,
     ) -> (res:Uint256):
-    let (denominationAssetAggregatorInfo_:felt) = aggregatorInfoFromAsset(_denominationAsset)
-    let (baseAssetAggregatorInfo_:felt) = aggregatorInfoFromAsset(_baseAsset)
-    with_attr error_message("setComptroller: can only be set once"):
-        assert denominationAssetAggregatorInfo_.rateAsset = baseAssetAggregatorInfo_.rateAsset
-    end
+    alloc_locals
+    let (denominationAssetKey_:felt) = keyFromAsset.read(_denominationAsset)
+    let (baseAssetAggregatorKey_:felt) = keyFromAsset.read(_baseAsset)
+
 
     let (vaultFactory_:felt) = vaultFactory.read()
     let (pontisOracle_:felt) = IVaultFactory.getOracle(vaultFactory_)
     
-    let (denominationAssetRateFelt_:felt, lastUpdatedTimestamp1_:felt) = IOracleProxy.get_value(pontisOracle_, denominationAssetAggregatorInfo_.key)
+    let (denominationAssetRateFelt_:felt, _) = IOracleProxy.get_value(pontisOracle_, denominationAssetKey_)
     let (denominationAssetRate_:Uint256) = felt_to_uint256(denominationAssetRateFelt_)
-    let (baseAssetRateFelt_:Uint256, lastUpdatedTimestamp2_:felt) = IOracleProxy.get_value(pontisOracle_, baseAssetAggregatorInfo_.key)
+    let (baseAssetRateFelt_:felt, _) = IOracleProxy.get_value(pontisOracle_, baseAssetAggregatorKey_)
     let (baseAssetRate_:Uint256) = felt_to_uint256(baseAssetRateFelt_)
-    let (pow18:Uint256) = Uint256(1000000000000000000,0)
     let(step_1:Uint256) = uint256_mul_low(baseAssetRate_, _amount)
-    let(step_2:Uint256) = uint256_mul_low(step_1, pow18)
-    let(step_3:Uint256) = uint256_div(step_2, denominationAssetRate_)
-    return (res=step_3)
+    let(step_2:Uint256) = uint256_div(step_1, denominationAssetRate_)
+    return (res=step_2)
 end
 
 #
@@ -124,11 +123,11 @@ func addPrimitive{
         range_check_ptr
     }(
         _asset: felt,
-        _key: Uint256,
-        _rateAsset:felt,
-    ) -> (res:Uint256):
+        _key: felt,
+    ):
     onlyVaultFactory()
     isSupportedPrimitiveAsset.write(_asset, 1)
-    aggregatorInfoFromAsset.write(_asset, _key, _rateAsset)
+    keyFromAsset.write(_asset, _key)
+    return()
 end
 

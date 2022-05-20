@@ -2,15 +2,16 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.uint256 import Uint256
 
 @contract_interface
 namespace IPontisPriceFeedMixin:
-    func addPrimitive(_asset: felt, _amount:Uint256, _rateAsset:felt):
+    func addPrimitive(_asset: felt, _key:felt):
     end
 
-    func calcAssetValueBmToDeno(_baseAsset: felt, _denominationAsset: felt):
+    func calcAssetValueBmToDeno(_baseAsset: felt, _amount:Uint256, _denominationAsset: felt) -> (res:Uint256):
     end
     
-    func checkIsSupportedPrimitiveAsset(_asset: felt):
+    func checkIsSupportedPrimitiveAsset(_asset: felt) -> (res:felt):
     end
 end

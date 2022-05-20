@@ -8,7 +8,7 @@ namespace IValueInterpretor:
     func addDerivative(_derivative: felt, _priceFeed: felt):
     end
 
-    func calculAssetValue(_baseAsset: felt, _amount: Uint256, _denominationAsset:felt) -> (res:felt):
+    func calculAssetValue(_baseAsset: felt, _amount: Uint256, _denominationAsset:felt) -> (res:Uint256):
     end
 
     func checkIsSupportedDerivativeAsset(_derivative: felt) -> (res:felt):

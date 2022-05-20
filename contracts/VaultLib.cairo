@@ -43,11 +43,11 @@ from openzeppelin.security.safemath import (
     uint256_checked_sub_le,
 )
 
-from contracts.interface.IVault import (
-    VaultAction
+from contracts.interfaces.IVault import (
+    VaultAction,
 )
 
-from contracts.interface.IExternalPosition import IExternalPosition
+from contracts.interfaces.IExternalPosition import IExternalPosition
 
 
 
@@ -502,7 +502,7 @@ func receiveValidatedVaultAction{
         _actionData:felt*,
     ):
     alloc_locals
-    conlyComptroller()
+    onlyComptroller()
     if  _action == VaultAction.AddTrackedAsset : 
         __executeVaultActionAddTrackedAsset(_actionData)
         return ()
@@ -695,7 +695,7 @@ func __executeVaultActionExecuteCall{
     let response = call_contract(
         contract_address=contract_,
         function_selector=selector_,
-        calldata_size=message.callData_len,
+        calldata_size=callData_len,
         calldata=callData)
     return ()
 end
