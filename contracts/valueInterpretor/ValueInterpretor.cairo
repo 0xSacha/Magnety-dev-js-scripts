@@ -84,11 +84,11 @@ func calculAssetValue{
         let (res:Uint256) = IPontisPriceFeedMixin.calcAssetValueBmToDeno(primitivePriceFeed_, _baseAsset, _amount, _denominationAsset)
         return(res=res)
     else:
-        let (isSupportedPrimitiveAsset_) = isSupportedDerivativeAsset.read(_baseAsset)
+        let (isSupportedDerivativeAsset_) = isSupportedDerivativeAsset.read(_baseAsset)
         with_attr error_message("calculAssetValue: asset not supported"):
             assert_not_zero(isSupportedPrimitiveAsset_)
         end
-        let (derivativePriceFeed_:felt) = IVaultFactory.getDerivativePriceFeed(vaultFactory_)
+        let (derivativePriceFeed_:felt) = getDerivativePriceFeed(_baseAsset)
         let (res:Uint256) = __calcDerivativeValue(derivativePriceFeed_, _baseAsset, _amount, _denominationAsset)
         return(res=res)
     end

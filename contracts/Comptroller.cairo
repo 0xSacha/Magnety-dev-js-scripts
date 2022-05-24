@@ -142,7 +142,7 @@ func activateVault{
         assert (denominationAsset_ - _asset) = 0
     end
     IERC20.transferFrom(_asset, caller_, _vault, _amount)
-    let (hundred_:Uint256) = felt_to_uint256(100)
+    let (hundred_:Uint256) = felt_to_uint256(10000)
     let (sharePricePurchased_:Uint256) = uint256_div(_amount ,hundred_)
     __mintShare(_vault, caller_, hundred_, sharePricePurchased_)
     return ()
@@ -156,7 +156,8 @@ end
 @external
 func addTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vaultId:felt ,_asset : felt):
     alloc_locals
-    let (vault_:felt) = getVaultAddressFromCallerAndId(_vaultId)
+    let (caller_:felt) = get_caller_address()
+    let (vault_:felt) = getVaultAddressFromCallerAndId(caller_, _vaultId)
     onlyAssetManager(vault_)
     let (policyManager_:felt) = __getPolicyManager()
     IPolicyManager.checkIsAllowedTrackedAsset(policyManager_, vault_, _asset)
@@ -166,7 +167,8 @@ end
 
 @external
 func removeTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vaultId:felt ,asset : felt):
-    let (vault_:felt) = getVaultAddressFromCallerAndId(_vaultId)
+    let (caller_:felt) = get_caller_address()
+    let (vault_:felt) = getVaultAddressFromCallerAndId(caller_, _vaultId)
     onlyAssetManager(vault_)
     #ADD policy only allow if value reach threesold
     #IPolicyManager...(vault_)
@@ -178,7 +180,8 @@ end
 func executeCall{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _vaultId:felt, _contract: felt, _selector: felt, _callData_len: felt, _callData: felt*):
     alloc_locals
-    let (vault_:felt) = getVaultAddressFromCallerAndId(_vaultId)
+    let (caller_:felt) = get_caller_address()
+    let (vault_:felt) = getVaultAddressFromCallerAndId(caller_, _vaultId)
     onlyAssetManager(vault_)
 
     #check if allowed call
@@ -206,7 +209,7 @@ func executeCall{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     assert [callData_] = _contract
     assert [callData_ + 1] = _selector
     assert [callData_ + 2] = _callData_len
-    memcpy(callData_, _callData + 3, _callData_len)
+    memcpy(callData_ +3, _callData, _callData_len)
     IVault.receiveValidatedVaultAction(vault_, VaultAction.ExecuteCall, _callData_len +3, callData_)
     return ()
     end
@@ -214,15 +217,20 @@ end
 
 @external
 func claimManagementFee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    _vaultId, _assets_len : felt, _assets : felt*, _percents_len:felt, _percents : felt*,
+    _vaultId, _assets_len : felt, _assets : felt*, _percents_len:felt, _percents: felt*,
 ):
     alloc_locals
-    let (vault_:felt) = getVaultAddressFromCallerAndId(_vaultId)
+    let (caller_:felt) = get_caller_address()
+    let (vault_:felt) = getVaultAddressFromCallerAndId(caller_, _vaultId)
     onlyAssetManager(vault_)
     let (feeManager_:felt) = __getFeeManager()
 
     with_attr error_message("claimManagementFee: tab size not equal"):
         assert _percents_len = _assets_len
+    end
+    let (totalpercent:felt) = __calculTab100(_percents_len, _percents)
+    with_attr error_message("claimManagementFee: sum of percents tab not equal at 100%"):
+        assert totalpercent = 100
     end
     let (current_timestamp) = get_block_timestamp()
     let (claimed_timestamp) = IFeeManager.getClaimedTimestamp(feeManager_, vault_)
@@ -257,8 +265,8 @@ func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         assert (denominationAsset_ - _asset) = 0
     end
     __assertMaxminRange(_vault, _amount)
-
     let (caller : felt) = get_caller_address()
+    __assertAllowedDepositor(_vault, caller)
     let (fee, fee_assset_manager, fee_treasury, fee_stacking_vault) = __get_fee(_vault, FeeConfig.ENTRANCE_FEE, _amount)
 
     # transfer fee to fee_treasury, stacking_vault
@@ -326,6 +334,25 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     alloc_locals
 
     let (caller) = get_caller_address()
+    let (owner_) = IVault.getOwnerOf(_vault, token_id)
+    with_attr error_message("sell_share: not owner of shares"):
+        assert caller = owner_
+    end
+
+    let (totalpercent:felt) = __calculTab100(percents_len, percents)
+    with_attr error_message("sell_share: sum of percents tab not equal at 100%"):
+        assert totalpercent = 100
+    end
+
+    #check timelock
+    let (policyManager_:felt) = __getPolicyManager()
+    let (mintedBlockTimesTamp_:felt) = IVault.getMintedBlockTimesTamp(_vault, token_id)
+    let (currentTimesTamp_:felt) = get_block_timestamp()
+    let (timelock_:felt) = IPolicyManager.getTimelock(policyManager_, _vault)
+    let diffTimesTamp_:felt = currentTimesTamp_ - mintedBlockTimesTamp_
+    with_attr error_message("sell_share: timelock not reached"):
+        assert_le(timelock_, diffTimesTamp_)
+    end
     # calc value of share
     let (share_value) = __share_value_of_amount(_vault, share_amount)
 
@@ -333,7 +360,7 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     assert assets_len = percents_len
     let len = assets_len
 
-    # Todo - Should be Uint256*
+    #get amount tab according to share_value and the percents tab 
     let (amounts : felt*) = alloc()
     calc_amount_of_each_asset(_vault, share_value, len, assets, percents, amounts)
 
@@ -559,16 +586,35 @@ end
 
 
 @view
-func getVaultAddressFromCallerAndId{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vaultId: felt) -> (res: felt):
-    let(caller_:felt) = get_caller_address()
-    let(res:felt) = assetManagerVault.read(caller_, _vaultId)
-
+func getVaultAddressFromCallerAndId{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_caller: felt, _vaultId: felt) -> (res: felt):
+    let(res:felt) = assetManagerVault.read(_caller, _vaultId)
     with_attr error_message("getVaultAddressFromCallerAndId: Vault not found"):
         assert_not_zero(res)
     end
     return (res=res)
 end
 
+@view
+func getVaultAmountFromCaller{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_caller: felt) -> (res: felt):
+    let(res:felt) = assetManagerVaultAmount.read(_caller)
+    return (res=res)
+end
+
+@view
+func getVaultAmount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
+    let(res:felt) = vaultAmount.read()
+    return (res=res)
+end
+
+
+@view
+func getVaultAddressFromId{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vaultId: felt) -> (res: felt):
+    let(res:felt) = idToVault.read(_vaultId)
+    with_attr error_message("getVaultAddressFromId: Vault not found"):
+        assert_not_zero(res)
+    end
+    return (res=res)
+end
 
 
 @view
@@ -709,3 +755,34 @@ func __assertMaxminRange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     end
     return ()
 end
+
+func __assertAllowedDepositor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    _vault : felt, _caller : felt):
+    alloc_locals
+    let (policyManager_) = __getPolicyManager()
+    let (isPublic_:felt) = IPolicyManager.checkIsPublic(policyManager_, _vault)
+    if isPublic_ == 1:
+        return()
+    else:
+        let (isAllowedDepositor_:felt) = IPolicyManager.checkIsAllowedDepositor(policyManager_, _vault, _caller)
+        with_attr error_message("__assertAllowedDepositor: not allowed depositor"):
+        assert isAllowedDepositor_ = 1
+        end
+    end
+    return ()
+end
+
+func __calculTab100{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    _percents_len : felt, _percents : felt*) -> (res:felt):
+    alloc_locals
+    if _percents_len == 0:
+        return (0)
+    end
+    let newPercents_len:felt = _percents_len - 1
+    let newPercents:felt* = _percents + 1
+    let (_previousElem:felt) = __calculTab100(newPercents_len, newPercents)
+    let res:felt = [_percents] + _previousElem
+    return (res=res)
+end
+
+

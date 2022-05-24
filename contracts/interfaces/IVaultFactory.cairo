@@ -19,9 +19,6 @@ namespace IVaultFactory:
     func getIntegrationManager() -> (res : felt):
     end
 
-    func getDerivativePriceFeed() -> (res : felt):
-    end
-
     func getPrimitivePriceFeed() -> (res : felt):
     end
 

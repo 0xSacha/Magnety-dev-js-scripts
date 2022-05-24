@@ -2,7 +2,6 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.uint256 import Uint256
 
 struct Entry:
     member key : felt
@@ -12,12 +11,12 @@ struct Entry:
 end
 
 @storage_var
-func price(key : felt) -> (value : Uint256):
+func price(key : felt) -> (value : felt):
 end
 
 @view
 func get_value{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(key : felt) -> (
-    value : Uint256, last_updated_timestamp : felt
+    value : felt, last_updated_timestamp : felt
 ):
     
     alloc_locals
@@ -28,7 +27,7 @@ end
 
 @external
 func set_value{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    key : felt, value : Uint256
+    key : felt, value : felt
 ):
     price.write(key, value)
     return ()

@@ -76,6 +76,6 @@ namespace IVault:
     func getSharePricePurchased(tokenId : Uint256) -> (sharePricePurchased : Uint256):
     end
 
-    func getMintedBlock(tokenId : Uint256) -> (mintedBlock : felt):
+    func getMintedBlockTimesTamp(tokenId : Uint256) -> (mintedBlock : felt):
     end
 end

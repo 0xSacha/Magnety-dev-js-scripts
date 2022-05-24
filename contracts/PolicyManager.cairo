@@ -34,6 +34,10 @@ end
 func isPublic(vault: felt) -> (res : felt):
 end
 
+@storage_var
+func isAllowedDepositor(vault: felt, depositor:felt) -> (res : felt):
+end
+
 
 
 
@@ -104,6 +108,13 @@ func checkIsAllowedIntegration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     return (res=res)
 end
 
+@view
+func checkIsAllowedDepositor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault: felt, _depositor: felt,
+        ) -> (res: felt): 
+    let (res) = isAllowedDepositor.read(_vault, _depositor)
+    return (res=res)
+end
+
 
 
 # Setters 
@@ -133,9 +144,9 @@ end
 
 @external
 func setTimelock{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        _vault: felt, _blocAmount: felt):
+        _vault: felt, _block_timestamp: felt):
     onlyVaultFactory()
-    timeLock.write(_vault, _blocAmount)
+    timeLock.write(_vault, _block_timestamp)
     return ()
 end
 
@@ -144,5 +155,13 @@ func setIsPublic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
         _vault: felt, _isPublic: felt):
     onlyVaultFactory()
     isPublic.write(_vault, _isPublic)
+    return ()
+end
+
+@external
+func setAllowedDepositor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _vault: felt, _depositor: felt):
+    onlyVaultFactory()
+    isAllowedDepositor.write(_vault, _depositor, 1)
     return ()
 end

@@ -3,7 +3,7 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
 from starkware.cairo.common.uint256 import Uint256, uint256_check
 from starkware.starknet.common.syscalls import (
-    get_block_number,
+    get_block_timestamp,
 )
 
 
@@ -54,19 +54,19 @@ from openzeppelin.introspection.ERC165 import ERC165_supports_interface
 #
 
 @storage_var
-func ERC721_sharesBalance(token_id: Uint256) -> (sharesAmount: Uint256):
+func ERC721_sharesBalance(token_id: Uint256) -> (res: Uint256):
 end
 
 @storage_var
-func ERC721_sharePricePurchased(token_id: Uint256) -> (sharePricePurchased: Uint256):
+func ERC721_sharePricePurchased(token_id: Uint256) -> (res: Uint256):
 end
 
 @storage_var
-func ERC721_sharesTotalSupply() -> (sharesTotalSupply: Uint256):
+func ERC721_sharesTotalSupply() -> (res: Uint256):
 end
 
 @storage_var
-func ERC721_mintedBlock(token_id: Uint256) -> (mintedBlock: felt):
+func ERC721_mintedBlockTimesTamp(token_id: Uint256) -> (res: felt):
 end
 
 
@@ -238,19 +238,19 @@ func sharePricePurchased{
 end
 
 @view
-func mintedBlock{
+func mintedBlockTimesTamp{
         syscall_ptr: felt*, 
         pedersen_ptr: HashBuiltin*, 
         range_check_ptr
-    }(tokenId: Uint256) -> (mintedBlock: felt):
+    }(tokenId: Uint256) -> (mintedBlockTimesTamp: felt):
 
     let (exists) = _exists(tokenId)
     with_attr error_message("ERC721_Metadata: mintedBlock query for nonexistent token"):
         assert exists = TRUE
     end
 
-    let (mintedBlock: felt) = ERC721_mintedBlock.read(tokenId)
-    return (mintedBlock)
+    let (mintedBlockTimesTamp: felt) = ERC721_mintedBlockTimesTamp.read(tokenId)
+    return (mintedBlockTimesTamp)
 end
 
 
@@ -344,8 +344,8 @@ func mint{
     #set metadata 
     ERC721_sharesBalance.write(tokenId, sharesAmount)
     ERC721_sharePricePurchased.write(tokenId, sharePricePurchased)
-    let (block_number) = get_block_number()
-    ERC721_mintedBlock.write(tokenId, block_number)
+    let (block_timestamp) = get_block_timestamp()
+    ERC721_mintedBlockTimesTamp.write(tokenId, block_timestamp)
 
     #set the new supply
     let (supply: Uint256) = ERC721_sharesTotalSupply.read()

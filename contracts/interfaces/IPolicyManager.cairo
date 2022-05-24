@@ -13,9 +13,11 @@ namespace IPolicyManager:
     end
     func setAllowedTrackedAsset(_vault: felt, _asset: felt):
     end
-    func setTimeLock(_vault: felt, _blocAmount: felt):
+    func setTimelock(_vault: felt, _blocAmount: felt):
     end
     func setIsPublic(_vault: felt, _isPublic: felt):
+    end
+    func setAllowedDepositor(_vault: felt, _depositor: felt):
     end
     
     
@@ -29,5 +31,7 @@ namespace IPolicyManager:
     func getTimelock(_vault:felt)-> (res : felt):
     end
     func checkIsPublic(_vault:felt)-> (res : felt):
+    end
+    func checkIsAllowedDepositor(_vault:felt, _depositor:felt)-> (res : felt):
     end
 end

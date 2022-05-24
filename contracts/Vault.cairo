@@ -63,7 +63,7 @@ from shareBaseToken import (
     sharesBalance,
     approve,
     sharePricePurchased,
-    mintedBlock,
+    mintedBlockTimesTamp,
 
     #NFT Shares externals
     transferSharesFrom,
@@ -102,6 +102,7 @@ end
 @storage_var
 func assetToIsTracked(assetsAddress : felt) -> (res : felt):
 end
+
 
 @storage_var
 func positionLimit() -> (res : Uint256):
@@ -176,7 +177,7 @@ func getAssetManager{
 end
 
 @view
-func getdenominationAsset{
+func getDenominationAsset{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
@@ -391,12 +392,12 @@ func getSharePricePurchased{
 end
 
 @view
-func getMintedBlock{
+func getMintedBlockTimesTamp{
         syscall_ptr: felt*, 
         pedersen_ptr: HashBuiltin*, 
         range_check_ptr
     }(tokenId: Uint256) -> (mintedBlock_: felt):
-    let (mintedBlock_: felt) = mintedBlock(tokenId)
+    let (mintedBlock_: felt) = mintedBlockTimesTamp(tokenId)
     return (mintedBlock_)
 end
 
@@ -462,10 +463,6 @@ func initializer{
         _positionLimitAmount: Uint256,
     ):
     onlyVaultFactory()
-    let (currentComptroller_:felt) = getcomptroller()
-    with_attr error_message("proxyInitializer: proxy already initialized"):
-        assert currentComptroller_ = 0
-    end
     initializeShares(_fundName, _fundSymbol)
     assetManager.write(_assetManager)
     denominationAsset.write(_denominationAsset)

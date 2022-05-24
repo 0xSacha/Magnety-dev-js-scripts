@@ -125,7 +125,6 @@ func addPrimitive{
         _asset: felt,
         _key: felt,
     ):
-    onlyVaultFactory()
     isSupportedPrimitiveAsset.write(_asset, 1)
     keyFromAsset.write(_asset, _key)
     return()
