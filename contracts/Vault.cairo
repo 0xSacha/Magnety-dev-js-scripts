@@ -116,9 +116,6 @@ end
 func assetManager() -> (res : felt):
 end
 
-@storage_var
-func isActivated() -> (res : felt):
-end
 
 
 #
@@ -155,16 +152,6 @@ const TRUE = 1
 
 
 
-@view
-func getAB{
-        syscall_ptr: felt*,
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }() -> (res: felt):
-    return (res=0)
-    
-end
-
 
 @view
 func getAssetManager{
@@ -186,16 +173,6 @@ func getDenominationAsset{
     return (res=res)
 end
 
-
-@view
-func checkIsActivated{
-        syscall_ptr: felt*,
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }() -> (res: felt):
-    let (res:felt) = isActivated.read()
-    return (res=res)
-end
 
 
 @view
@@ -472,20 +449,7 @@ func initializer{
     return ()
 end
 
-@external
-func activate{
-        syscall_ptr : felt*,
-        pedersen_ptr : HashBuiltin*,
-        range_check_ptr
-    }():
-    onlyComptroller()
-    let (isActivated_:felt) = isActivated.read()
-    with_attr error_message("activate: vault already activated"):
-        assert isActivated_ = 0
-    end
-    isActivated.write(1)
-    return ()
-end
+
 
 
 @external

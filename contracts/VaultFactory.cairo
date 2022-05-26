@@ -384,7 +384,7 @@ func addGlobalAllowedIntegration{
     IIntegrationManager.setAvailableIntegration(integrationManager_, integration_.contract, integration_.selector, integration_.integration)
 
     let newIntegrationList_len:felt = _integrationList_len -1
-    let newIntegrationList:integration* = _integrationList + 1
+    let newIntegrationList:integration* = _integrationList + 3
 
     return addGlobalAllowedIntegration(
         _integrationList_len= newIntegrationList_len,
@@ -416,6 +416,59 @@ func addAllowedDepositors{
    __addAllowedDepositors(_vault, _depositors_len, _depositors)
     return ()
 end
+
+@external
+func addAllowedTrackedAsset{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_vault:felt, _trackedAsset_len: felt, _trackedAsset: felt*) -> ():
+    alloc_locals
+
+    let (policyManager_:felt) = policyManager.read()
+    let (integrationManager_:felt) = integrationManager.read()
+
+    with_attr error_message("addAllowedTrackedAsset: dependencies not set"):
+        assert_not_zero(policyManager_  * integrationManager_)
+    end
+
+    let (caller_:felt) = get_caller_address()
+    let (assetManager_:felt) = IVault.getAssetManager(_vault)
+
+    with_attr error_message("addAllowedTrackedAsset: not allowed caller"):
+        assert_not_zero(caller_  - assetManager_)
+    end
+    
+    __addAllowedAsset(_trackedAsset_len, _trackedAsset, _vault, integrationManager_, policyManager_)
+    return()
+end
+
+@external
+func addAllowedIntegration{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_vault:felt, _integration_len: felt, _integration: integration*) -> ():
+    alloc_locals
+
+    let (policyManager_:felt) = policyManager.read()
+    let (integrationManager_:felt) = integrationManager.read()
+
+    with_attr error_message("addAllowedIntegration: dependencies not set"):
+        assert_not_zero(policyManager_  * integrationManager_)
+    end
+
+    let (caller_:felt) = get_caller_address()
+    let (assetManager_:felt) = IVault.getAssetManager(_vault)
+
+    with_attr error_message("addAllowedIntegration: not allowed caller"):
+        assert_not_zero(caller_  - assetManager_)
+    end
+
+    __addAllowedIntegration(_integration_len, _integration, _vault, integrationManager_, policyManager_)
+    return()
+end
+
 
 
 
@@ -555,6 +608,7 @@ func __is_zero{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return (res=0)
 end
 
+
 func __addAllowedAsset{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -585,6 +639,7 @@ func __addAllowedAsset{
     )
 end
 
+
 func __addAllowedIntegration{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -605,7 +660,7 @@ func __addAllowedIntegration{
     IPolicyManager.setAllowedIntegration(_policyManager, _vault, integration_.contract, integration_.selector)
 
     let newIntegration_len:felt = _integration_len -1
-    let newIntegration:integration* = _integration + 1
+    let newIntegration:integration* = _integration + 3
 
     return __addAllowedIntegration(
         _integration_len= newIntegration_len,
@@ -616,7 +671,7 @@ func __addAllowedIntegration{
     )
 end
 
-
+@external
 func __addAllowedDepositors{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,

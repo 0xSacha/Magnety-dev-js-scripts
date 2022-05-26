@@ -2,8 +2,10 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
 from starkware.cairo.common.uint256 import Uint256, uint256_check
+
+
 from starkware.starknet.common.syscalls import (
-    get_block_timestamp,
+    get_block_timestamp, get_contract_address
 )
 
 
