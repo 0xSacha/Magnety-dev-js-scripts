@@ -17,9 +17,12 @@ describe("fullTest", function () {
     it("should deploy vaultFactory", async function () {
         await ctx.deployContracts([
             { name: "vaultFactory", src: "VaultFactory", params: {} },
+            { name: "saver", src: "Saver", params: {} },
         ])
         expect(ctx.vaultFactory).not.to.be.undefined
         expect(ctx.vaultFactory.address).not.to.be.undefined
+        expect(ctx.saver).not.to.be.undefined
+        expect(ctx.saver.address).not.to.be.undefined
         let vaultFactoryAddress = ctx.vaultFactory.address
         console.log(`vaultFactory addr: ${vaultFactoryAddress}`)
     });
@@ -31,9 +34,10 @@ describe("fullTest", function () {
 
     it("should deploy dependencies", async function () {
         let vaultFactoryAddress = ctx.vaultFactory.address
+        let saverAddress = ctx.saver.address
         const AliceAddress = ctx.alice.address
         await ctx.deployContracts([
-            { name: "comptroller", src: "Comptroller", params: { _vaultFactory: vaultFactoryAddress } },
+            { name: "comptroller", src: "Comptroller", params: { _vaultFactory: vaultFactoryAddress, _saver: saverAddress } },
             { name: "feeManager", src: "FeeManager", params: { _vaultFactory: vaultFactoryAddress } },
             { name: "integrationManager", src: "IntegrationManager", params: { _vaultFactory: vaultFactoryAddress } },
             { name: "policyManager", src: "PolicyManager", params: { _vaultFactory: vaultFactoryAddress } },

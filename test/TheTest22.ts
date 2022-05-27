@@ -89,7 +89,6 @@ describe("fullTest", function () {
 
         const availableIntegration2 = await ctx.integrationManager.call("getAvailableIntegrations", {})
         console.log(availableIntegration2)
-
     });
 
 });
