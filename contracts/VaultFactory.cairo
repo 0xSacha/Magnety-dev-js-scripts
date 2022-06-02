@@ -102,10 +102,6 @@ end
 func primitivePriceFeed() -> (res: felt):
 end
 
-@storage_var
-func derivativePriceFeed() -> (res: felt):
-end
-
 
 @storage_var
 func stackingVault() -> (res : felt):
@@ -198,15 +194,7 @@ func getPrimitivePriceFeed{
     return(res)
 end
 
-@view
-func getDerivativePriceFeed{
-        syscall_ptr: felt*,
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }() -> (res: felt):
-    let (res:felt) = derivativePriceFeed.read()
-    return(res)
-end
+
 
 @view
 func getStackingVault{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
@@ -536,6 +524,9 @@ func initializeFund{
     with_attr error_message("initializeFund: denomination asset hags to be a supported primitive"):
         assert isupportedPriceFeed_ = 1
     end
+    let (allowDeno_: felt*) = alloc()
+    assert [allowDeno_] = _denominationAsset
+    __addAllowedAsset(1, allowDeno_, _vault, integrationManager_, policyManager_)
     #VaultProxy init
     IVault.initializer(_vault, _fundName, _fundSymbol, assetManager_, _denominationAsset, _positionLimitAmount)
     #Set feeconfig for vault

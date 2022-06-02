@@ -86,7 +86,7 @@ func calculAssetValue{
     else:
         let (isSupportedDerivativeAsset_) = isSupportedDerivativeAsset.read(_baseAsset)
         with_attr error_message("calculAssetValue: asset not supported"):
-            assert_not_zero(isSupportedPrimitiveAsset_)
+            assert_not_zero(isSupportedDerivativeAsset_)
         end
         let (derivativePriceFeed_:felt) = getDerivativePriceFeed(_baseAsset)
         let (res:Uint256) = __calcDerivativeValue(derivativePriceFeed_, _baseAsset, _amount, _denominationAsset)
@@ -132,7 +132,6 @@ func addDerivative{
         _derivative: felt,
         _priceFeed: felt,
     ):
-    onlyVaultFactory()
     isSupportedDerivativeAsset.write(_derivative, 1)
     derivativeToPriceFeed.write(_derivative, _priceFeed)
     return()
@@ -188,7 +187,7 @@ func __calcUnderlyingDerivativeValue{
     let newUnderlyingsAssets_len_:felt = _underlyingsAssets_len -1
     let newUnderlyingsAssets_:felt* = _underlyingsAssets + 1
     let newUnderlyingsAmount_len_:felt = _underlyingsAmount_len -1
-    let newUnderlyingsAmount_:Uint256* = _underlyingsAmount + 1
+    let newUnderlyingsAmount_:Uint256* = _underlyingsAmount + 2
     let (nextValue_:Uint256) = __calcUnderlyingDerivativeValue(newUnderlyingsAssets_len_, newUnderlyingsAssets_, newUnderlyingsAmount_len_, newUnderlyingsAmount_, _denominationAsset)
     
     let (res_:Uint256, _) = uint256_add(underlyingValue_, nextValue_)  

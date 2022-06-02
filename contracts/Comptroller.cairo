@@ -154,7 +154,8 @@ func activateVault{
     #save 
     let (saver_:felt) = saver.read()
     let (tokenId_:Uint256) = IVault.getTotalSupply(_vault)
-    ISaver.setNewMint(saver_, caller_, _vault, tokenId_)
+    let (contractAddress_:felt) = get_contract_address()
+    ISaver.setNewMint(saver_, _vault, caller_, contractAddress_,tokenId_)
     __mintShare(_vault, caller_, hundred_, sharePricePurchased_)
     return ()
 end
@@ -299,7 +300,8 @@ func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     #save 
     let (saver_:felt) = saver.read()
     let (tokenId_:Uint256) = IVault.getTotalSupply(_vault)
-    ISaver.setNewMint(saver_, caller, _vault, tokenId_)
+    let (contractAddress_:felt) = get_contract_address()
+    ISaver.setNewMint(saver_, _vault, caller, contractAddress_,tokenId_)
 
     # mint share
     __mintShare(_vault, caller, share_amount, share_price)
@@ -407,7 +409,7 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (saver_:felt) = saver.read()
     let (contractAddress_:felt) = get_contract_address()
     if isEqual_ == 0 :
-        ISaver.setNewBurn(saver_, caller, contractAddress_, token_id)
+        ISaver.setNewBurn(saver_, _vault, caller, contractAddress_, token_id)
         return ()
     end
     return ()

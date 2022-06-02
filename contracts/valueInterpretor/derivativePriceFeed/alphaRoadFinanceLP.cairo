@@ -40,7 +40,7 @@ func calcUnderlyingValues{
     let (reserveToken0_:Uint256, reserveToken1_:Uint256) = IARFPool.getReserves(_derivative)
     let (amountToken0_:Uint256, amountToken1_:Uint256) = IARFSwapController.removeLiquidityQuote(IARFSwapController_, _amount, reserveToken0_, reserveToken1_, totalSupply_)
     assert [underlyingsAmount_] = amountToken0_
-    assert [underlyingsAmount_] = amountToken1_
+    assert [underlyingsAmount_+2] = amountToken1_
     return (underlyingsAssets_len=2, underlyingsAssets=underlyingsAssets_, underlyingsAmount_len=2, underlyingsAmount=underlyingsAmount_)
 end
 

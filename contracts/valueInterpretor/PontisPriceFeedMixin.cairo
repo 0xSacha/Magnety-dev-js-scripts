@@ -23,7 +23,7 @@ from starkware.cairo.common.alloc import alloc
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from interfaces.IFeeManager import FeeConfig
-from interfaces.IOracleProxy import IOracleProxy
+from interfaces.IOracleController import IOracleController
 from interfaces.IVaultFactory import IVaultFactory
 
 
@@ -103,9 +103,9 @@ func calcAssetValueBmToDeno{
     let (vaultFactory_:felt) = vaultFactory.read()
     let (pontisOracle_:felt) = IVaultFactory.getOracle(vaultFactory_)
     
-    let (denominationAssetRateFelt_:felt, _) = IOracleProxy.get_value(pontisOracle_, denominationAssetKey_)
+    let (denominationAssetRateFelt_:felt, _) = IOracleController.get_value(pontisOracle_, denominationAssetKey_, 0)
     let (denominationAssetRate_:Uint256) = felt_to_uint256(denominationAssetRateFelt_)
-    let (baseAssetRateFelt_:felt, _) = IOracleProxy.get_value(pontisOracle_, baseAssetAggregatorKey_)
+    let (baseAssetRateFelt_:felt, _) = IOracleController.get_value(pontisOracle_, baseAssetAggregatorKey_, 0)
     let (baseAssetRate_:Uint256) = felt_to_uint256(baseAssetRateFelt_)
     let(step_1:Uint256) = uint256_mul_low(baseAssetRate_, _amount)
     let(step_2:Uint256) = uint256_div(step_1, denominationAssetRate_)
