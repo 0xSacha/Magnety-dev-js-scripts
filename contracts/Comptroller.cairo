@@ -285,13 +285,11 @@ func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (amount_without_fee) = uint256_sub(_amount, fee)
 
     # calculate GAV as usdt
-    let (gav) = calc_gav(_vault)
+    let (gav) = calc_gav(_vault) #useless
     let (share_price) = getSharePrice(_vault)
 
-    let (asset_value) = getAssetValue(_asset, amount_without_fee, denominationAsset_)
-    # calculate share_amount = amount / share_price
 
-    let (share_amount) = uint256_div(asset_value, share_price)
+    let (share_amount) = uint256_div(amount_without_fee, share_price)
     #!!!!!! can have some issues if share_price > asset_value, then div = 0 and share not taken into account
 
     # send token to the vault

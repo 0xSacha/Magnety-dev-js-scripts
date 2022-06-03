@@ -189,7 +189,6 @@ func __calcUnderlyingDerivativeValue{
     let newUnderlyingsAmount_len_:felt = _underlyingsAmount_len -1
     let newUnderlyingsAmount_:Uint256* = _underlyingsAmount + 2
     let (nextValue_:Uint256) = __calcUnderlyingDerivativeValue(newUnderlyingsAssets_len_, newUnderlyingsAssets_, newUnderlyingsAmount_len_, newUnderlyingsAmount_, _denominationAsset)
-    
     let (res_:Uint256, _) = uint256_add(underlyingValue_, nextValue_)  
 
     return (res=res_)
