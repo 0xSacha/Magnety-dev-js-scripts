@@ -16,6 +16,7 @@ from starkware.cairo.common.uint256 import (
     uint256_mul,
     uint256_unsigned_div_rem,
 )
+from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
 
 from contracts.utils.utils import felt_to_uint256, uint256_div, uint256_percent, uint256_mul_low
 from starkware.cairo.common.uint256 import Uint256
@@ -23,12 +24,12 @@ from starkware.cairo.common.alloc import alloc
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from interfaces.IFeeManager import FeeConfig
-from interfaces.IOracleController import IOracleController
+from interfaces.IOracle import IOracle
 from interfaces.IVaultFactory import IVaultFactory
 
 
 @storage_var
-func vaultFactory() -> (vaultFactoryAddress : felt):
+func vaultFactory() -> (res: felt):
 end
 
 @storage_var
@@ -46,11 +47,12 @@ struct AggregatorInfo:
 end
 
 
-func onlyVaultFactory{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}():
+func onlyOwner{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}():
     let (vaultFactory_) = vaultFactory.read()
     let (caller_) = get_caller_address()
-    with_attr error_message("onlyVaultFactory: only callable by the vaultFactory"):
-        assert (vaultFactory_ - caller_) = 0
+    let (owner_) = IVaultFactory.getOwner(vaultFactory_)
+    with_attr error_message("onlyOwner: only callable by the owner"):
+        assert owner_ = caller_
     end
     return ()
 end
@@ -99,17 +101,23 @@ func calcAssetValueBmToDeno{
     let (denominationAssetKey_:felt) = keyFromAsset.read(_denominationAsset)
     let (baseAssetAggregatorKey_:felt) = keyFromAsset.read(_baseAsset)
 
+    let (decimalsBaseAsset:felt) = IERC20.decimals(_baseAsset)
+    let (decimalsDenominationAsset:felt) = IERC20.decimals(_denominationAsset)
 
     let (vaultFactory_:felt) = vaultFactory.read()
     let (pontisOracle_:felt) = IVaultFactory.getOracle(vaultFactory_)
-    
-    let (denominationAssetRateFelt_:felt, _) = IOracleController.get_value(pontisOracle_, denominationAssetKey_, 0)
+
+    let (denominationAssetRateFelt_:felt, _) = IOracle.get_value(pontisOracle_, denominationAssetKey_, 0)
     let (denominationAssetRate_:Uint256) = felt_to_uint256(denominationAssetRateFelt_)
-    let (baseAssetRateFelt_:felt, _) = IOracleController.get_value(pontisOracle_, baseAssetAggregatorKey_, 0)
+    
+    let (baseAssetRateFelt_:felt, _) = IOracle.get_value(pontisOracle_, baseAssetAggregatorKey_, 0)
     let (baseAssetRate_:Uint256) = felt_to_uint256(baseAssetRateFelt_)
+
     let(step_1:Uint256) = uint256_mul_low(baseAssetRate_, _amount)
     let(step_2:Uint256) = uint256_div(step_1, denominationAssetRate_)
-    return (res=step_2)
+    let(step_3:Uint256) = uint256_mul_low(step_2, Uint256(decimalsDenominationAsset,0))
+    let(step_4:Uint256) = uint256_div(step_3, Uint256(decimalsBaseAsset,0))
+    return (res=step_4)
 end
 
 #
@@ -125,6 +133,7 @@ func addPrimitive{
         _asset: felt,
         _key: felt,
     ):
+    onlyOwner()
     isSupportedPrimitiveAsset.write(_asset, 1)
     keyFromAsset.write(_asset, _key)
     return()

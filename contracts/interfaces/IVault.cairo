@@ -11,6 +11,8 @@ struct VaultAction:
     member TransferShares: felt
     member WithdrawAssetTo: felt
     member ExecuteCall: felt
+    member AddTrackedExternalPosition: felt
+    member RemoveTrackedExternalPosition: felt
 end
 
 @contract_interface
@@ -39,6 +41,12 @@ namespace IVault:
     end
 
     func getTrackedAssets() -> (trackedAssets__len : felt, trackedAssets_ : felt*):
+    end
+
+    func isTrackedExternalPosition(_externalPosition : felt) -> (isTrackedExternalPosition_ : felt):
+    end
+
+    func getTrackedExternalPositions() -> (trackedExternalPositions__len : felt, trackedExternalPositions_ : felt*):
     end
 
     func getPositionsLimit() -> (positionLimit_ : Uint256):

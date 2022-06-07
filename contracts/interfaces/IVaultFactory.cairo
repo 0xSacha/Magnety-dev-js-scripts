@@ -5,7 +5,15 @@ from starkware.cairo.common.uint256 import Uint256
 @contract_interface
 namespace IVaultFactory:
 
-    # Vault factory getters
+    #save new shares
+    func setNewMint(_vault: felt, _caller:felt, _tokenId:Uint256):
+    end
+
+    func setNewBurn(_vault: felt, _caller:felt, _tokenId:Uint256):
+    end
+
+    func getOwner() -> (res : felt):
+    end
 
     func getOracle() -> (res : felt):
     end

@@ -17,6 +17,10 @@ namespace IIntegrationManager:
     end
     func checkIsIntegrationAvailable(_contract: felt, _selector: felt) -> (res: felt):
     end
+
+    func checkIsExternalPositionAvailable(_externalPosition:felt) -> (res: felt): 
+    end
+
     func getIntegration(_contract: felt, _selector: felt) -> (res: felt):
     end
 end

@@ -38,7 +38,7 @@ func allowedIntegrationLength(vault: felt) -> (res : felt):
 end
 
 @storage_var
-func isAllowedIntegration(vault: felt, integration_:integration) -> (res : felt):
+func isAllowedIntegration(vault: felt, _integration_:integration) -> (res : felt):
 end
 
 
@@ -51,14 +51,35 @@ func allowedTrackedAssetLength(vault: felt) -> (res : felt):
 end
 
 @storage_var
-func isAllowedTrackedAsset(_vault: felt,asset:felt) -> (res : felt):
+func isAllowedTrackedAsset(_vault: felt,_asset:felt) -> (res : felt):
 end
 
+
+@storage_var
+func idToAllowedTrackedExternalPosition(vault: felt, id:felt) -> (res : felt):
+end
+
+@storage_var
+func allowedTrackedExternalPositionLength(vault: felt) -> (res : felt):
+end
+
+@storage_var
+func isAllowedTrackedExternalPosition(_vault: felt,_externalPosition:felt) -> (res : felt):
+end
 
 
 
 @storage_var
 func isPublic(vault: felt) -> (res : felt):
+end
+
+
+@storage_var
+func idToAllowedDepositor(vault: felt, id:felt) -> (res : felt):
+end
+
+@storage_var
+func allowedDepositorLength(vault: felt) -> (res : felt):
 end
 
 @storage_var
@@ -129,6 +150,12 @@ func checkIsAllowedTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
 end
 
 @view
+func checkIsAllowedTrackedExternalPosition{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault: felt, _externalPosition: felt) -> (res:felt):
+    let (res) = isAllowedTrackedExternalPosition.read(_vault, _externalPosition)
+    return (res=res)
+end
+
+@view
 func checkIsAllowedIntegration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault: felt, _contract: felt, _selector: felt
         ) -> (res: felt): 
     let (res) = isAllowedIntegration.read(_vault, integration(_contract, _selector))
@@ -169,6 +196,68 @@ func __completeAllowedTrackedAsset{
         _vault = _vault,
         _allowedTrackedAsset_len=newAllowedTrackedAsset_len,
         _allowedTrackedAsset= _allowedTrackedAsset,
+        index=new_index_,
+    )
+end
+
+@view
+func getAllowedDepositor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault:felt) -> (allowedDepositor_len: felt, allowedDepositor:felt*): 
+    alloc_locals
+    let (allowedDepositor_len:felt) = allowedDepositorLength.read(_vault)
+    let (local allowedDepositor : felt*) = alloc()
+    __completeAllowedDepositor(_vault, allowedDepositor_len, allowedDepositor, 0)
+    return(allowedDepositor_len, allowedDepositor)
+end
+
+func __completeAllowedDepositor{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_vault:felt, _allowedDepositor_len:felt, _allowedDepositor:felt*, index:felt) -> ():
+    if _allowedDepositor_len == 0:
+        return ()
+    end
+    let (depositor_:felt) = idToAllowedDepositor.read(_vault, index)
+    assert [_allowedDepositor + index] = depositor_
+
+    let new_index_:felt = index + 1
+    let newAllowedDepositor_len:felt = _allowedDepositor_len -1
+
+    return __completeAllowedDepositor(
+        _vault = _vault,
+        _allowedDepositor_len=newAllowedDepositor_len,
+        _allowedDepositor= _allowedDepositor,
+        index=new_index_,
+    )
+end
+
+@view
+func getAllowedTrackedExternalPosition{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault:felt) -> (allowedTrackedExternalPosition_len: felt, allowedTrackedExternalPosition:felt*): 
+    alloc_locals
+    let (allowedTrackedExternalPosition_len:felt) = allowedTrackedExternalPositionLength.read(_vault)
+    let (local allowedTrackedExternalPosition : felt*) = alloc()
+    __completeAllowedTrackedExternalPosition(_vault, allowedTrackedExternalPosition_len, allowedTrackedExternalPosition, 0)
+    return(allowedTrackedExternalPosition_len, allowedTrackedExternalPosition)
+end
+
+func __completeAllowedTrackedExternalPosition{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_vault:felt, _allowedTrackedExternalPosition_len:felt, _allowedTrackedExternalPosition:felt*, index:felt) -> ():
+    if _allowedTrackedExternalPosition_len == 0:
+        return ()
+    end
+    let (externalPosition_:felt) = idToAllowedTrackedExternalPosition.read(_vault, index)
+    assert [_allowedTrackedExternalPosition + index] = externalPosition_
+
+    let new_index_:felt = index + 1
+    let newAllowedTrackedExternalPosition_len:felt = _allowedTrackedExternalPosition_len -1
+
+    return __completeAllowedTrackedExternalPosition(
+        _vault = _vault,
+        _allowedTrackedExternalPosition_len=newAllowedTrackedExternalPosition_len,
+        _allowedTrackedExternalPosition= _allowedTrackedExternalPosition,
         index=new_index_,
     )
 end
@@ -220,23 +309,69 @@ end
 func setAllowedIntegration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _vault: felt, _contract: felt, _selector: felt):
     onlyVaultFactory()
+    let (isAllowedIntegration_:felt) = isAllowedIntegration.read(_vault, integration(_contract, _selector))
+    if isAllowedIntegration_ == 1:
+    return()
+    else:
     isAllowedIntegration.write(_vault, integration(_contract, _selector), 1)
     let (currentAllowedIntegrationLength_:felt) = allowedIntegrationLength.read(_vault)
     idToAllowedIntegration.write(_vault, currentAllowedIntegrationLength_, integration(_contract, _selector))
     allowedIntegrationLength.write(_vault, currentAllowedIntegrationLength_ + 1)
     return ()
+    end
 end
 
 @external
 func setAllowedTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _vault: felt, _asset: felt):
     onlyVaultFactory()
+    let (isAllowedTrackedAsset_:felt) = isAllowedTrackedAsset.read(_vault, _asset)
+    if isAllowedTrackedAsset_ == 1:
+    return()
+    else:
     isAllowedTrackedAsset.write(_vault, _asset, 1)
     let (currentAllowedTrackedAssetLength_:felt) = allowedTrackedAssetLength.read(_vault)
     idToAllowedTrackedAsset.write(_vault, currentAllowedTrackedAssetLength_, _asset)
     allowedTrackedAssetLength.write(_vault, currentAllowedTrackedAssetLength_ + 1)
     return ()
+    end
 end
+
+@external
+func setAllowedTrackedExternalPosition{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _vault: felt, _externalPosition: felt):
+    onlyVaultFactory()
+    let (isAllowedTrackedExternalPosition_:felt) = isAllowedTrackedExternalPosition.read(_vault, _externalPosition)
+    if isAllowedTrackedExternalPosition_ == 1:
+    return()
+    else:
+    isAllowedTrackedExternalPosition.write(_vault, _externalPosition, 1)
+    let (currentAllowedTrackedExternalPositionLength_:felt) = allowedTrackedExternalPositionLength.read(_vault)
+    idToAllowedTrackedExternalPosition.write(_vault, currentAllowedTrackedExternalPositionLength_, _externalPosition)
+    allowedTrackedExternalPositionLength.write(_vault, currentAllowedTrackedExternalPositionLength_ + 1)
+    return ()
+    end
+end
+
+
+
+@external
+func setAllowedDepositor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _vault: felt, _depositor: felt):
+    onlyVaultFactory()
+    let (isAllowedDepositor_:felt) = isAllowedDepositor.read(_vault, _depositor)
+    if isAllowedDepositor_ == 1:
+    return()
+    else:
+    isAllowedDepositor.write(_vault, _depositor, 1)
+    let (currentAllowedDepositorLength_:felt) = allowedDepositorLength.read(_vault)
+    idToAllowedDepositor.write(_vault, currentAllowedDepositorLength_, _depositor)
+    allowedDepositorLength.write(_vault, currentAllowedDepositorLength_ + 1)
+    return ()
+    end
+end
+
+
 
 @external
 func setTimelock{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -254,10 +389,4 @@ func setIsPublic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ()
 end
 
-@external
-func setAllowedDepositor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        _vault: felt, _depositor: felt):
-    onlyVaultFactory()
-    isAllowedDepositor.write(_vault, _depositor, 1)
-    return ()
-end
+

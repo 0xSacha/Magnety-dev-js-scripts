@@ -10,7 +10,15 @@ from contracts.interfaces.IARFSwapController import IARFSwapController
 from starkware.cairo.common.math import assert_not_zero
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
+from interfaces.IVaultFactory import IVaultFactory
 
+from starkware.starknet.common.syscalls import (
+    get_tx_info,
+    get_block_number,
+    get_block_timestamp,
+    get_contract_address,
+    get_caller_address,
+)
 
 @storage_var
 func poolAddress(derivative:felt) -> (res: felt):
@@ -19,6 +27,12 @@ end
 @storage_var
 func IARFSwapControllerContract() -> (res: felt):
 end
+
+@storage_var
+func vaultFactory() -> (res: felt):
+end
+
+
 
 #
 #Getter
@@ -80,6 +94,31 @@ func getIARFSwapController{
 end
 
 
+
+func onlyOwner{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}():
+    let (vaultFactory_) = vaultFactory.read()
+    let (caller_) = get_caller_address()
+    let (owner_) = IVaultFactory.getOwner(vaultFactory_)
+    with_attr error_message("onlyVaultFactory: only callable by the owner"):
+        assert owner_ = caller_
+    end
+    return ()
+end
+
+
+@constructor
+func constructor{
+        syscall_ptr : felt*,
+        pedersen_ptr : HashBuiltin*,
+        range_check_ptr
+    }(
+        _vaultFactory: felt,
+    ):
+    vaultFactory.write(_vaultFactory)
+    return ()
+end
+
+
 #
 #External
 #
@@ -92,6 +131,7 @@ func addPoolAddress{
         _derivative: felt,
         _pool: felt,
     ):
+    onlyOwner()
     poolAddress.write(_derivative, _pool)
     return()
 end

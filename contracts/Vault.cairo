@@ -47,9 +47,6 @@ from contracts.interfaces.IVault import (
     VaultAction,
 )
 
-from contracts.interfaces.IExternalPosition import IExternalPosition
-
-
 
 from shareBaseToken import (
 
@@ -87,6 +84,8 @@ end
 func comptroller() -> (res : felt):
 end
 
+
+
 @storage_var
 func trackedAssets(id : felt) -> (res : felt):
 end
@@ -102,6 +101,24 @@ end
 @storage_var
 func assetToIsTracked(assetsAddress : felt) -> (res : felt):
 end
+
+
+@storage_var
+func trackedExternalPositions(id : felt) -> (res : felt):
+end
+
+@storage_var
+func externalPositionToId(asset : felt) -> (res : felt):
+end
+
+@storage_var
+func trackedExternalPositionsLength() -> (res : felt):
+end
+
+@storage_var
+func externalPositionToIsTracked(assetsAddress : felt) -> (res : felt):
+end
+
 
 
 @storage_var
@@ -132,6 +149,14 @@ end
 
 @event
 func TrackedAssetRemoved(assetAddress: felt):
+end
+
+@event
+func TrackedExternalPositionAdded(externalPositionAddress: felt):
+end
+
+@event
+func TrackedExternalPositionRemoved(externalPositionAddress: felt):
 end
 
 # @event
@@ -221,6 +246,19 @@ func isTrackedAsset{
 end
 
 @view
+func isTrackedExternalPosition{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_externalPosition: felt) -> (isTrackedExternalPosition_: felt):
+    let (isTrackedExternalPosition_:felt) = externalPositionToIsTracked.read(_externalPosition)
+    if isTrackedExternalPosition_ == 0:
+        return (FALSE)
+    end
+        return(TRUE)
+end
+
+@view
 func getTrackedAssets{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -238,9 +276,9 @@ func completeAssetTab{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
-    }(trackedAssets_len_:felt, trackedAssets_:felt*, index:felt) -> ():
+    }(trackedAssets__len:felt, trackedAssets_:felt*, index:felt) -> ():
 
-    if trackedAssets_len_ == 0:
+    if trackedAssets__len == 0:
         return ()
     end
     let (trackedAsset_:felt) = trackedAssets.read(index)
@@ -249,11 +287,49 @@ func completeAssetTab{
     
 
     let new_index_:felt = index + 1
-    let new_trackedAssets_len_:felt = trackedAssets_len_ -1
+    let new_trackedAssets__len:felt = trackedAssets__len -1
 
     return completeAssetTab(
-        trackedAssets_len_=new_trackedAssets_len_,
+        trackedAssets__len=new_trackedAssets__len,
         trackedAssets_= trackedAssets_,
+        index=new_index_,
+    )
+end
+
+@view
+func getTrackedExternalPositions{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (trackedExternalPositions__len:felt, trackedExternalPositions_: felt*):
+    alloc_locals
+    let (trackedExternalPositions__len:felt) = trackedExternalPositionsLength.read()
+    let (local trackedExternalPositions_ : felt*) = alloc()
+    completeAssetTab2(trackedExternalPositions__len, trackedExternalPositions_, 0)
+    return(trackedExternalPositions__len, trackedExternalPositions_)
+end
+
+
+func completeAssetTab2{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(trackedExternalPositions__len:felt, trackedExternalPositions_:felt*, index:felt) -> ():
+
+    if trackedExternalPositions__len == 0:
+        return ()
+    end
+
+    let (trackedExternalPosition_:felt) = trackedExternalPositions.read(index)
+
+    assert [trackedExternalPositions_ + index] = trackedExternalPosition_
+    
+    let new_index_:felt = index + 1
+    let newTrackedExternalPositions__len:felt = trackedExternalPositions__len -1
+
+    return completeAssetTab2(
+        trackedExternalPositions__len=newTrackedExternalPositions__len,
+        trackedExternalPositions_= trackedExternalPositions_,
         index=new_index_,
     )
 end
@@ -491,7 +567,17 @@ func receiveValidatedVaultAction{
                                                     if _action == VaultAction.ExecuteCall:
                                                         __executeVaultActionExecuteCall(_actionData)
                                                         return ()
-                                                    end
+                                                        else:
+                                                            if _action == VaultAction.AddTrackedExternalPosition: 
+                                                            __executeVaultActionAddTrackedExternalPosition(_actionData)
+                                                            return ()
+                                                            else:
+                                                                if _action == VaultAction.RemoveTrackedExternalPosition : 
+                                                                __executeVaultActionRemoveTrackedExternalPosition(_actionData)
+                                                                return ()
+                                                                end
+                                                            end
+                                                        end
                                                 end
                                         end
                                 end
@@ -542,6 +628,16 @@ func __executeVaultActionAddTrackedAsset{
     return ()
 end
 
+func __executeVaultActionAddTrackedExternalPosition{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_actionData: felt*):
+    let address_:felt = _actionData[0]
+    __addTrackedExternalPosition(address_)
+    return ()
+end
+
 func __executeVaultActionRemoveTrackedAsset{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -549,6 +645,16 @@ func __executeVaultActionRemoveTrackedAsset{
     }(_actionData: felt*):
     let address_:felt = _actionData[0]
     __removeTrackedAsset(address_)
+    return ()
+end
+
+func __executeVaultActionRemoveTrackedExternalPosition{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_actionData: felt*):
+    let address_:felt = _actionData[0]
+    __removeTrackedExternalPosition(address_)
     return ()
 end
 
@@ -677,7 +783,7 @@ func __addTrackedAsset{
     with_attr error_message("__addTrackedAsset: asset already tracked"):
         assert isTrackedAsset_ = FALSE
     end
-    # __validatePositionsLimit()
+    __validatePositionsLimit()
     let (currentTrackedAssetsLength: felt) = trackedAssetsLength.read()
     assetToIsTracked.write(_asset,TRUE)
     trackedAssets.write(currentTrackedAssetsLength,_asset)
@@ -685,6 +791,27 @@ func __addTrackedAsset{
     let newTrackedAssetsLength_: felt = currentTrackedAssetsLength + 1
     trackedAssetsLength.write(newTrackedAssetsLength_)
     TrackedAssetAdded.emit(_asset)
+    return ()
+end
+
+func __addTrackedExternalPosition{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_externalPosition: felt):
+
+    let (isTrackedExternalPosition_:felt) = isTrackedExternalPosition(_externalPosition)
+    with_attr error_message("__addTrackedExternalPosition: ExternalPosition already tracked"):
+        assert isTrackedExternalPosition_ = FALSE
+    end
+    # __validatePositionsLimit()
+    let (currentTrackedExternalPositionsLength: felt) = trackedExternalPositionsLength.read()
+    externalPositionToIsTracked.write(_externalPosition,TRUE)
+    trackedExternalPositions.write(currentTrackedExternalPositionsLength,_externalPosition)
+    externalPositionToId.write(_externalPosition,currentTrackedExternalPositionsLength)
+    let newTrackedExternalPositionsLength_: felt = currentTrackedExternalPositionsLength + 1
+    trackedExternalPositionsLength.write(newTrackedExternalPositionsLength_)
+    TrackedExternalPositionAdded.emit(_externalPosition)
     return ()
 end
 
@@ -717,6 +844,35 @@ func __removeTrackedAsset{
     return ()
 end
 
+func __removeTrackedExternalPosition{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_externalPosition: felt):
+    alloc_locals
+    let (isTrackedExternalPosition_:felt) = isTrackedExternalPosition(_externalPosition)
+    with_attr error_message("__removeTrackedExternalPosition: ExternalPosition not tracked"):
+        assert isTrackedExternalPosition_ = TRUE
+    end
+    externalPositionToIsTracked.write(_externalPosition,FALSE)
+    let (currentTrackedExternalPositionsLength_: felt) = trackedExternalPositionsLength.read()
+    let (id:felt) = externalPositionToId.read(_externalPosition)
+    let res:felt = currentTrackedExternalPositionsLength_- id
+    let newTrackedExternalPositionsLength_: felt = currentTrackedExternalPositionsLength_ - 1
+    if res == 1: 
+    trackedExternalPositions.write(id, 0)
+    else:
+        let lastExternalPositionId:felt = newTrackedExternalPositionsLength_
+        let (lastExternalPosition:felt) = trackedExternalPositions.read(lastExternalPositionId)
+        trackedExternalPositions.write(lastExternalPositionId, 0)
+        trackedExternalPositions.write(id, lastExternalPosition)
+        externalPositionToId.write(lastExternalPosition, id)
+    end
+    trackedExternalPositionsLength.write(newTrackedExternalPositionsLength_)
+    TrackedExternalPositionRemoved.emit(_externalPosition)
+    return ()
+end
+
 
 func __validatePositionsLimit{
         syscall_ptr: felt*,
@@ -726,8 +882,9 @@ func __validatePositionsLimit{
     alloc_locals
     let (positionLimit_:Uint256) = getPositionsLimit()
     let (trackedAssetsLength_:felt) = trackedAssetsLength.read()
-    let (trackedAssetsLengthUint:Uint256) = felt_to_uint256(trackedAssetsLength_)
-    let (res__) = uint256_le(trackedAssetsLengthUint, positionLimit_)
+    let (trackedExternalPositionsLength_:felt) = trackedExternalPositionsLength.read()
+    let (totalTrackedLengthUint_:Uint256) = felt_to_uint256(trackedAssetsLength_ + trackedExternalPositionsLength_)
+    let (res__) = uint256_le(totalTrackedLengthUint_, positionLimit_)
     with_attr error_message("__validatePositionsLimit: Limit exceeded"):
         assert res__ = TRUE
     end
