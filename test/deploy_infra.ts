@@ -17,12 +17,9 @@ describe("fullTest", function () {
     it("should deploy vaultFactory", async function () {
         await ctx.deployContracts([
             { name: "vaultFactory", src: "VaultFactory", params: {} },
-            { name: "saver", src: "Saver", params: {} },
         ])
-        // expect(ctx.vaultFactory).not.to.be.undefined
-        // expect(ctx.vaultFactory.address).not.to.be.undefined
-        // expect(ctx.saver).not.to.be.undefined
-        // expect(ctx.saver.address).not.to.be.undefined
+        expect(ctx.vaultFactory).not.to.be.undefined
+        expect(ctx.vaultFactory.address).not.to.be.undefined
         let vaultFactoryAddress = ctx.vaultFactory.address
         console.log(`vaultFactory addr: ${vaultFactoryAddress}`)
     });

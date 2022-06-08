@@ -104,7 +104,6 @@ func constructor{
         range_check_ptr
     }(
         _vaultFactory: felt,
-        _saver: felt,
     ):
     vaultFactory.write(_vaultFactory)
     return ()

@@ -79,3 +79,15 @@ func uint256_percent{pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     return (res=res)
 end
+
+func uint256_pow{pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    x : Uint256, pow : felt
+) -> (res : Uint256):
+    if pow == 0:
+    return(Uint256(1,0))
+    end
+
+    let (prev_res) = uint256_pow(x,pow-1)
+    let (res) = uint256_mul_low(x, prev_res)
+    return (res=res)
+end

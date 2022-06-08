@@ -17,12 +17,14 @@ from starkware.cairo.common.uint256 import (
     uint256_mul,
     uint256_unsigned_div_rem,
 )
+from contracts.utils.utils import felt_to_uint256, uint256_div, uint256_percent, uint256_mul_low, uint256_pow
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from interfaces.IPontisPriceFeedMixin import IPontisPriceFeedMixin
 from interfaces.IVaultFactory import IVaultFactory
 from interfaces.IDerivativePriceFeed import IDerivativePriceFeed
 from interfaces.IExternalPositionPriceFeed import IExternalPositionPriceFeed
+from interfaces.IERC20 import IERC20
 
 from starkware.cairo.common.math import assert_not_zero
 
@@ -30,6 +32,11 @@ from starkware.cairo.common.math import assert_not_zero
 @storage_var
 func vaultFactory() -> (vaultFactoryAddress : felt):
 end
+
+@storage_var
+func ethAddress() -> (ethAddress : felt):
+end
+
 
 @storage_var
 func derivativeToPriceFeed(derivative:felt) -> (res: felt):
@@ -57,8 +64,10 @@ func constructor{
         range_check_ptr
     }(
         _vaultFactory: felt,
+        _ethAddress:felt,
     ):
     vaultFactory.write(_vaultFactory)
+    ethAddress.write(_ethAddress)
     return ()
 end
 
@@ -85,27 +94,22 @@ func calculAssetValue{
         _amount: Uint256,
         _denominationAsset:felt,
     ) -> (res:Uint256):
-    if  _baseAsset == _denominationAsset:
-        return (res=_amount)
-    end
+    alloc_locals
     let (vaultFactory_:felt) = vaultFactory.read()
     let (primitivePriceFeed_:felt) = IVaultFactory.getPrimitivePriceFeed(vaultFactory_)
-    let (isSupportedPrimitiveAsset_) = IPontisPriceFeedMixin.checkIsSupportedPrimitiveAsset(primitivePriceFeed_, _baseAsset)
-
-    if isSupportedPrimitiveAsset_ == 1:
-        let (res:Uint256) = IPontisPriceFeedMixin.calcAssetValueBmToDeno(primitivePriceFeed_, _baseAsset, _amount, _denominationAsset)
+    let (isSupportedPrimitiveDenominationAsset_:felt) = IPontisPriceFeedMixin.checkIsSupportedPrimitiveAsset(primitivePriceFeed_, _denominationAsset)
+    if isSupportedPrimitiveDenominationAsset_ == 1:
+        let (res:Uint256) = __calculAssetValue(_baseAsset, _amount, _denominationAsset)
         return(res=res)
     else:
-        let (isSupportedDerivativeAsset_) = isSupportedDerivativeAsset.read(_baseAsset)
-        if isSupportedDerivativeAsset_ == 1:
-        let (derivativePriceFeed_:felt) = getDerivativePriceFeed(_baseAsset)
-        let (res:Uint256) = __calcDerivativeValue(derivativePriceFeed_, _baseAsset, _amount, _denominationAsset)
-        return(res=res)
-        else:
-        let (externalPositionPriceFeed_:felt) = getExternalPositionPriceFeed(_baseAsset)
-        let (res:Uint256) = __calcExternalPositionValue(externalPositionPriceFeed_, _baseAsset, _amount, _denominationAsset)
-        return(res=res)
-        end
+        let (ethAddress_:felt) = ethAddress.read()
+        let (decimalsDenominationAsset_:felt) = IERC20.decimals(_denominationAsset)
+        let (decimalsDenominationAssetPow_:Uint256) = uint256_pow(Uint256(10,0),decimalsDenominationAsset_)
+        let (baseAsssetValueInEth_:Uint256) = __calculAssetValue(_baseAsset, _amount, ethAddress_)
+        let (oneUnityDenominationAsssetValueInEth_:Uint256) = __calculAssetValue(_denominationAsset, decimalsDenominationAssetPow_, ethAddress_)
+        let (step_1:Uint256) = uint256_mul_low(baseAsssetValueInEth_, decimalsDenominationAssetPow_)
+        let (res:Uint256) = uint256_div(step_1, oneUnityDenominationAsssetValueInEth_)
+        return(res)
     end
 end
 
@@ -199,6 +203,39 @@ end
 #
 # Internal
 #
+
+func __calculAssetValue{
+        pedersen_ptr: HashBuiltin*, 
+        syscall_ptr: felt*, 
+        range_check_ptr
+    }(
+        _baseAsset: felt,
+        _amount: Uint256,
+        _denominationAsset:felt,
+    ) -> (res:Uint256):
+    if  _baseAsset == _denominationAsset:
+        return (res=_amount)
+    end
+    let (vaultFactory_:felt) = vaultFactory.read()
+    let (primitivePriceFeed_:felt) = IVaultFactory.getPrimitivePriceFeed(vaultFactory_)
+    let (isSupportedPrimitiveAsset_) = IPontisPriceFeedMixin.checkIsSupportedPrimitiveAsset(primitivePriceFeed_, _baseAsset)
+
+    if isSupportedPrimitiveAsset_ == 1:
+        let (res:Uint256) = IPontisPriceFeedMixin.calcAssetValueBmToDeno(primitivePriceFeed_, _baseAsset, _amount, _denominationAsset)
+        return(res=res)
+    else:
+        let (isSupportedDerivativeAsset_) = isSupportedDerivativeAsset.read(_baseAsset)
+        if isSupportedDerivativeAsset_ == 1:
+        let (derivativePriceFeed_:felt) = getDerivativePriceFeed(_baseAsset)
+        let (res:Uint256) = __calcDerivativeValue(derivativePriceFeed_, _baseAsset, _amount, _denominationAsset)
+        return(res=res)
+        else:
+        let (externalPositionPriceFeed_:felt) = getExternalPositionPriceFeed(_baseAsset)
+        let (res:Uint256) = __calcExternalPositionValue(externalPositionPriceFeed_, _baseAsset, _amount, _denominationAsset)
+        return(res=res)
+        end
+    end
+end
 
 func __calcDerivativeValue{
         pedersen_ptr: HashBuiltin*, 

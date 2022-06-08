@@ -1,5 +1,6 @@
 # Declare this file as a StarkNet contract.
 %lang starknet
+from starkware.cairo.common.math import assert_not_zero, assert_not_equal, assert_le
 from starkware.starknet.common.syscalls import (
     get_tx_info,
     get_block_number,
@@ -18,7 +19,7 @@ from starkware.cairo.common.uint256 import (
 )
 from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
 
-from contracts.utils.utils import felt_to_uint256, uint256_div, uint256_percent, uint256_mul_low
+from contracts.utils.utils import felt_to_uint256, uint256_div, uint256_percent, uint256_mul_low, uint256_pow
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
 
@@ -32,18 +33,13 @@ from interfaces.IVaultFactory import IVaultFactory
 func vaultFactory() -> (res: felt):
 end
 
+
 @storage_var
 func isSupportedPrimitiveAsset(asset:felt) -> (res: felt):
 end
 
 @storage_var
 func keyFromAsset(asset:felt) -> (res:felt):
-end
-
-
-struct AggregatorInfo:
-    member key: felt
-    member rateAsset:felt
 end
 
 
@@ -103,6 +99,8 @@ func calcAssetValueBmToDeno{
 
     let (decimalsBaseAsset:felt) = IERC20.decimals(_baseAsset)
     let (decimalsDenominationAsset:felt) = IERC20.decimals(_denominationAsset)
+    let (decimalsBaseAssetPow:Uint256) = uint256_pow(Uint256(10,0),decimalsBaseAsset)
+    let (decimalsDenominationAssetPow:Uint256) = uint256_pow(Uint256(10,0),decimalsDenominationAsset)
 
     let (vaultFactory_:felt) = vaultFactory.read()
     let (pontisOracle_:felt) = IVaultFactory.getOracle(vaultFactory_)
@@ -115,8 +113,8 @@ func calcAssetValueBmToDeno{
 
     let(step_1:Uint256) = uint256_mul_low(baseAssetRate_, _amount)
     let(step_2:Uint256) = uint256_div(step_1, denominationAssetRate_)
-    let(step_3:Uint256) = uint256_mul_low(step_2, Uint256(decimalsDenominationAsset,0))
-    let(step_4:Uint256) = uint256_div(step_3, Uint256(decimalsBaseAsset,0))
+    let(step_3:Uint256) = uint256_mul_low(step_2, decimalsDenominationAssetPow)
+    let(step_4:Uint256) = uint256_div(step_3, decimalsBaseAssetPow)
     return (res=step_4)
 end
 
@@ -136,6 +134,12 @@ func addPrimitive{
     onlyOwner()
     isSupportedPrimitiveAsset.write(_asset, 1)
     keyFromAsset.write(_asset, _key)
+    let (vaultFactory_:felt) = vaultFactory.read()
+    let (oracle_:felt) = IVaultFactory.getOracle(vaultFactory_)
+    let (test_:felt, _) = IOracle.get_value(oracle_, _key, 0)
+    with_attr error_message("addPrimitive: recieved 0 "):
+        assert_not_zero(test_)
+    end
     return()
 end
 

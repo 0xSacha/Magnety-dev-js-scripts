@@ -8,10 +8,10 @@ import { expectFeeEstimationStructure } from "./util";
 describe("Starknet", function () {
   this.timeout(TIMEOUT);
 
-  let mainContractFactory: StarknetContractFactory;
-  let mainContract: StarknetContract;
-  let utilContractFactory: StarknetContractFactory;
-  let utilContract: StarknetContract;
+  // let mainContractFactory: StarknetContractFactory;
+  // let mainContract: StarknetContract;
+  // let utilContractFactory: StarknetContractFactory;
+  // let utilContract: StarknetContract;
 
   let account: Account;
   let accountAddress: string;
@@ -19,8 +19,8 @@ describe("Starknet", function () {
   let publicKey: string;
 
   before(async function () {
-    mainContractFactory = await starknet.getContractFactory("starknet-artifacts/Account");
-    utilContractFactory = await starknet.getContractFactory("starknet-artifacts/Account");
+    // mainContractFactory = await starknet.getContractFactory("starknet-artifacts/Account");
+    // utilContractFactory = await starknet.getContractFactory("starknet-artifacts/Account");
 
     // console.log("Started deployment");
     // mainContract = await mainContractFactory.deploy({ initial_balance: 0 });
@@ -41,6 +41,7 @@ describe("Starknet", function () {
   });
 
   it("should load an already deployed account with the correct private key", async function () {
+
     const loadedAccount = await starknet.getAccountFromAddress(accountAddress, privateKey, "OpenZeppelin");
 
     expect(loadedAccount.starknetContract.address).to.deep.equal(accountAddress);
@@ -48,14 +49,14 @@ describe("Starknet", function () {
     expect(loadedAccount.publicKey).to.deep.equal(publicKey);
   });
 
-  it("should fail when loading an already deployed account with a wrong private key", async function () {
-    try {
-      await starknet.getAccountFromAddress(accountAddress, "0x0123", "OpenZeppelin");
-      expect.fail("Should have failed on passing an incorrect private key.");
-    } catch (err: any) {
-      expect(err.message).to.equal("The provided private key is not compatible with the public key stored in the contract.");
-    }
-  });
+  // it("should fail when loading an already deployed account with a wrong private key", async function () {
+  //   try {
+  //     await starknet.getAccountFromAddress(accountAddress, "0x0123", "OpenZeppelin");
+  //     expect.fail("Should have failed on passing an incorrect private key.");
+  //   } catch (err: any) {
+  //     expect(err.message).to.equal("The provided private key is not compatible with the public key stored in the contract.");
+  //   }
+  // });
 
   // it("should invoke a function on another contract", async function () {
   //   const { res: currBalance } = await account.call(mainContract, "get_balance");
