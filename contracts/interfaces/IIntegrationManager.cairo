@@ -9,8 +9,12 @@ namespace IIntegrationManager:
 
     func setAvailableAsset(_asset: felt):
     end
+    func setAvailableExternalPosition(_asset: felt):
+    end
+
     func setAvailableIntegration(_contract: felt, _selector: felt, _integration:felt):
     end
+
 
 
     func checkIsAssetAvailable(_asset: felt) -> (res: felt):

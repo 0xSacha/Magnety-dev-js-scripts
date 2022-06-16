@@ -2,15 +2,14 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
+from starkware.starknet.common.syscalls import get_caller_address
 
-from starkware.cairo.common.math import assert_not_zero, assert_not_equal, assert_le
+from starkware.cairo.common.math import  assert_le
 from starkware.cairo.common.memcpy import memcpy
 
-from starkware.starknet.common.syscalls import get_tx_info, get_block_number, get_block_timestamp
+from starkware.starknet.common.syscalls import get_block_timestamp
 
 from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
-from contracts.interfaces.IOracle import IOracle
 from contracts.interfaces.IPolicyManager import IPolicyManager
 from contracts.interfaces.IValueInterpretor import IValueInterpretor
 from contracts.interfaces.IIntegrationManager import IIntegrationManager
@@ -19,7 +18,6 @@ from starkware.cairo.common.uint256 import Uint256
 
 from starkware.cairo.common.alloc import alloc
 
-from starkware.cairo.common.find_element import find_element
 
 from starkware.cairo.common.uint256 import (
     uint256_sub,
@@ -28,11 +26,10 @@ from starkware.cairo.common.uint256 import (
     uint256_eq,
     uint256_add,
     uint256_mul,
-    uint256_unsigned_div_rem,
 )
 
 # from starkware.cairo.common.uint256 import
-from openzeppelin.security.safemath import uint256_checked_add, uint256_checked_sub_le
+from openzeppelin.security.safemath import uint256_checked_sub_le
 
 from contracts.interfaces.IVault import VaultAction, IVault
 
@@ -68,21 +65,9 @@ func idToVault(id: felt) -> (res: felt):
 end
 
 
-
-
-
 #
 # Modifiers
 #
-
-func onlyVaultFactory{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}():
-    let (vaultFactory_) = vaultFactory.read()
-    let (caller_) = get_caller_address()
-    with_attr error_message("onlyVaultFactory: only callable by the vaultFactory"):
-        assert (vaultFactory_ - caller_) = 0
-    end
-    return ()
-end
 
 func onlyAssetManager{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}(_vault: felt):
     let (assetManager_:felt) = IVault.getAssetManager(_vault)
@@ -115,13 +100,11 @@ end
 # View
 #
 
-
 @view
 func getSharePrice{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault:felt,) -> (
      price : Uint256
 ):
     alloc_locals
-
     let (gav) = calculGav(_vault)
     #shares have 18 decimals
     let (gavPow18_:Uint256,_) = uint256_mul(gav, Uint256(POW18,0))
@@ -129,7 +112,6 @@ func getSharePrice{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     let (price : Uint256) = uint256_div(gavPow18_, total_supply)
     return (price=price)
 end
-
 
 
 @view
@@ -141,7 +123,6 @@ func getAssetValue{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     let (value_:Uint256) = IValueInterpretor.calculAssetValue(valueInterpretor_, _asset, _amount, _denominationAsset)
     return (value=value_)
 end
-
 
 
 @view
@@ -197,12 +178,30 @@ func __get_fee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     let (fee) = uint256_percent(amount, percent_uint256)
     # 80% to the assetmanager, 16% to stacking vault, 4% to the DAOtreasury
-
+    # TODO: These value should be upgradable by the governance
     let (fee_asset_manager) = uint256_percent(fee, Uint256(80,0))
     let (fee_stacking_vault) = uint256_percent(fee, Uint256(16,0))
     let (fee_treasury) = uint256_percent(fee, Uint256(4,0))
 
     return (fee=fee, fee_asset_manager= fee_asset_manager,fee_treasury=fee_treasury, fee_stacking_vault=fee_stacking_vault)
+end
+
+@view
+func getManagementFeeValue{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    _vault:felt) -> (res:Uint256):
+    alloc_locals
+    let (feeManager_:felt) = __getFeeManager()
+    let (current_timestamp) = get_block_timestamp()
+    let (claimed_timestamp) = IFeeManager.getClaimedTimestamp(feeManager_, _vault)
+    let (gav:Uint256) = calculGav(_vault)
+    let interval_stamps = current_timestamp - claimed_timestamp
+    let interval_days = interval_stamps / 86400
+
+    let (APY, _, _, _) = __get_fee(_vault,FeeConfig.MANAGEMENT_FEE, gav)
+    let (interval_days_uint256) = felt_to_uint256(interval_days)
+    let (temp_total, _) = uint256_mul(APY, interval_days_uint256)
+    let (claimAmount_) = uint256_div(temp_total, Uint256(360,0))
+    return(res=claimAmount_)
 end
 
 
@@ -224,10 +223,11 @@ end
 @external
 func removeTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault:felt ,_asset : felt):
     onlyAssetManager(_vault)
-    
+    #TODO: find a threshold value from which untrack an asset doesn't impact the share price
     __removeTrackedAsset(_vault, _asset)
     return ()
 end
+
 
 @external
 func addTrackedExternalPosition{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault:felt ,_externalPosition : felt):
@@ -242,7 +242,7 @@ end
 @external
 func removeTrackedExternalPosition{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault:felt ,_externalPosition : felt):
     onlyAssetManager(_vault)
-    
+    #TODO: find a threshold value from which untrack an external position doesn't impact the share price
     __removeTrackedExternalPosition(_vault, _externalPosition)
     return ()
 end
@@ -289,6 +289,8 @@ func claimManagementFee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     _vault:felt, _assets_len : felt, _assets : felt*, _percents_len:felt, _percents: felt*,
 ):
     alloc_locals
+    #To think, the fact the asset manager can claim management fees whenever he wants can be an issue, 
+    # If an investor buy shares and the asset manager claim these fees just after, it will reduce significantly the share price
     onlyAssetManager(_vault)
     with_attr error_message("claimManagementFee: tab size not equal"):
         assert _percents_len = _assets_len
@@ -305,23 +307,7 @@ func claimManagementFee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     return ()
 end
 
-@view
-func getManagementFeeValue{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    _vault:felt) -> (res:Uint256):
-    alloc_locals
-    let (feeManager_:felt) = __getFeeManager()
-    let (current_timestamp) = get_block_timestamp()
-    let (claimed_timestamp) = IFeeManager.getClaimedTimestamp(feeManager_, _vault)
-    let (gav:Uint256) = calculGav(_vault)
-    let interval_stamps = current_timestamp - claimed_timestamp
-    let interval_days = interval_stamps / 86400
 
-    let (APY, _, _, _) = __get_fee(_vault,FeeConfig.MANAGEMENT_FEE, gav)
-    let (interval_days_uint256) = felt_to_uint256(interval_days)
-    let (temp_total, _) = uint256_mul(APY, interval_days_uint256)
-    let (claimAmount_) = uint256_div(temp_total, Uint256(360,0))
-    return(res=claimAmount_)
-end
 
 
 
@@ -329,6 +315,7 @@ end
 
 @external
 func mintFromVF{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_vault:felt, caller : felt, share_amount : Uint256, share_price : Uint256):
+    # Initial minting is performed from the VaultFactory contract
     let (caller_:felt) = get_caller_address()
     let (vaultFactory_:felt) = vaultFactory.read()
     with_attr error_message("mintFromVF: Only callable by the VaultFactory"):
@@ -339,6 +326,7 @@ func mintFromVF{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 end
 
 #everyone
+
 @external
 func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _vault: felt, _amount: Uint256
@@ -379,7 +367,6 @@ func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     return ()
 end
-
 
 
 @external
@@ -469,6 +456,9 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     return ()
 end
 
+#
+#Internal
+#
 
 func __addTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_asset: felt, _vault:felt):
     let (call_data : felt*) = alloc()
@@ -509,16 +499,12 @@ func calc_amount_of_each_asset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     if len == 0:
         return ()
     end
-    # asset_value = total_value * 100 / percents[0]
+
     let (denominationAsset_)= IVault.getDenominationAsset(_vault)
-    let (percent) = felt_to_uint256(percents[0])
-
-    let (sharePricePercent:Uint256) = uint256_percent(total_value, percent)
-    let (decimals:felt) = IERC20.decimals(assets[0])
-    let (assetPrice_:Uint256) = getAssetValue(assets[0], Uint256(decimals,0), denominationAsset_)
-    let (intermediary_:Uint256,_) = uint256_mul(sharePricePercent, Uint256(decimals,0))
-    let (assetAmount_) = uint256_div(intermediary_, assetPrice_)
-
+    let (percent:Uint256) = felt_to_uint256(percents[0])
+    let (valuePercent_:Uint256) = uint256_percent(total_value, percent)
+    #return from an amount in denomination asset the corresponding amount of the wanted asset 
+    let (assetAmount_:Uint256) = getAssetValue(denominationAsset_, valuePercent_,assets[0])
     assert [amounts] = assetAmount_.low
 
     calc_amount_of_each_asset(
@@ -543,12 +529,10 @@ func __is_zero{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 
-
-
-
 func __transferEachAssetMF{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _vault:felt, caller : felt, len : felt, assets : felt*, amounts : felt*,
 ):
+    #for Management fee only
     alloc_locals
     if len == 0:
         return ()
@@ -641,11 +625,10 @@ func __burn_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     _vault:felt, token_id : Uint256, amount : Uint256
 ):
     alloc_locals
-
+    #called burn_share but can be sub Shares if the amount to burn is lower than the shareAmount of the NFT
     let (call_data : felt*) = alloc()
     assert [call_data] = token_id.low
     assert token_id.high = 0
-    # TODO - vault_lib should change share_amount type into Uint256, which is felt atm
     assert [call_data + 1] = amount.low
 
  
@@ -658,6 +641,7 @@ end
 func __calculGav1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _vault:felt, assets_len : felt, assets : felt*
 ) -> (gav : Uint256):
+    #Tracked assets GAV 
     alloc_locals
     if assets_len == 0:
         return (gav=Uint256(0, 0))
@@ -674,12 +658,14 @@ end
 func __calculGav2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _vault:felt, externalPositions_len : felt, externalPositions : felt*
 ) -> (gav : Uint256):
+    #External position GAV 
     alloc_locals
     if externalPositions_len == 0:
         return (gav=Uint256(0, 0))
     end
     let (gavOfRest) = __calculGav2(_vault=_vault, externalPositions_len=externalPositions_len - 1, externalPositions=externalPositions + 1)
     let(denominationAsset_:felt) = IVault.getDenominationAsset(_vault)
+        #here the _vault address is given in the amount arg because the external position value is not represented by an assset Amount but is linked to the vault Address
     let (externalPosition_value:Uint256) = getAssetValue(externalPositions[0], Uint256(_vault,0), denominationAsset_)
     let (gav, _) = uint256_add(externalPosition_value, gavOfRest)
     return (gav=gav)
@@ -691,10 +677,8 @@ func __mintShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     _vault:felt, caller : felt, share_amount : Uint256, share_price : Uint256
 ):
     alloc_locals
-    # TODO - share_amount.low, share_price.low should be updated like uint256_to_felt(share_amount)
     let (call_data : felt*) = alloc()
     assert [call_data] = caller
-    # TODO - vault_lib should change share_amount type into Uint256, which is felt atm
     assert [call_data + 1] = share_amount.low
     assert [call_data + 2] = share_price.low
 
@@ -779,6 +763,7 @@ func __assertAllowedDepositor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
     return ()
 end
 
+#helper to make sure the sum is 100%
 func __calculTab100{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _percents_len : felt, _percents : felt*) -> (res:felt):
     alloc_locals

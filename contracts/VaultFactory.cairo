@@ -4,7 +4,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.starknet.common.syscalls import (
     get_caller_address, get_contract_address, get_block_timestamp
 )
-from contracts.utils.utils import felt_to_uint256, uint256_div, uint256_percent
+from contracts.utils.utils import felt_to_uint256, uint256_div, uint256_percent, uint256_pow
 
 
 from starkware.cairo.common.math import (
@@ -313,7 +313,8 @@ func getPrimitivePriceFeed{
 end
 
 
-#get Share info
+
+#get Share info, helper to fetch info for the frontend, to be removed once tracker is implemented
 
 @view
 func getUserShareAmount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_user: felt) -> (
@@ -331,7 +332,7 @@ func getUserShareInfo{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
 end
 
 
-#get Vault info
+#get Vault info helper to fetch info for the frontend, to be removed once tracker is implemented
 
 @view
 func getUserVaultAmount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_user:felt) -> (res: felt):
@@ -518,6 +519,20 @@ func addGlobalAllowedAsset{
 end
 
 @external
+func addGlobalAllowedExternalPosition{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_externalPositionList_len:felt, _externalPositionList:felt*) -> ():
+    alloc_locals
+    onlyOwner()
+    onlyDependenciesSet()
+    let (integrationManager_:felt) = integrationManager.read()
+    __addGlobalAllowedExternalPosition(_externalPositionList_len, _externalPositionList, integrationManager_)
+    return ()
+end
+
+@external
 func addGlobalAllowedIntegration{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -530,6 +545,8 @@ func addGlobalAllowedIntegration{
     __addGlobalAllowedIntegration(_integrationList_len, _integrationList, integrationManager_)
     return()
 end
+
+
 
 #asset manager
 
@@ -550,6 +567,8 @@ func addAllowedDepositors{
     return ()
 end
 
+
+#both next functions will be changed later, all policies/integrations change will have to be requested before the execution. Just usefull for testnet usage, for funds to add new available assets/integrations
 @external
 func addAllowedTrackedAsset{
         syscall_ptr: felt*,
@@ -579,7 +598,7 @@ func addAllowedIntegration{
 end
 
 
-#comptroller
+#comptroller, to be removed once tracker up
 @external
 func setNewMint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _vault: felt, _caller:felt, _tokenId:Uint256):
@@ -619,7 +638,7 @@ end
 
 
 
-# Initialize a vault freshly deployed
+# Initialize a vault freshly deployed. We are not using factory contract because for beta version the user will first deploy an account/Fund  and then initialize it
 @external
 func initializeFund{
         syscall_ptr: felt*, 
@@ -690,16 +709,17 @@ func initializeFund{
     #VaultProxy init
     IVault.initializer(_vault, _fundName, _fundSymbol, assetManager_, _denominationAsset, _positionLimitAmount)
 
-    #Feed the fund
-    #check allowed amount, should be support 6 decimals denomination asset
-    let (allowedAmount_:felt) = uint256_le(Uint256(10000,0), _amount) 
+    #check allowed amount, min amount > decimal/1000 & share amount in [1, 100]
+    let (decimals_:felt) = IERC20.decimals(_denominationAsset)
+    let (minInitialAmount_:Uint256) = uint256_pow(Uint256(10,0), decimals_ - 3)
+    let (allowedAmount_:felt) = uint256_le(minInitialAmount_, _amount) 
     let (allowedShareAmount1_:felt) = uint256_le(_shareAmount, Uint256(POW20,0))
     let (allowedShareAmount2_:felt) = uint256_le(Uint256(POW18,0), _shareAmount)
-    with_attr error_message("activateVault: not allowed Amount"):
+    with_attr error_message("initializeFund: not allowed Amount"):
         assert allowedAmount_ *  allowedShareAmount1_ * allowedShareAmount2_= 1
     end
 
-    #save vault
+    #save vault to be removed once tracker live
     let (currentAssetManagerVaultAmount_: felt) = assetManagerVaultAmount.read(assetManager_)
     assetManagerVault.write(assetManager_, currentAssetManagerVaultAmount_, _vault)
     assetManagerVaultAmount.write(assetManager_, currentAssetManagerVaultAmount_ + 1)
@@ -707,7 +727,7 @@ func initializeFund{
     vaultAmount.write(currentVaultAmount + 1)
     idToVault.write(currentVaultAmount, _vault)
 
-    #save shares
+    #save shares to be removed once tracker live
     let (tokenId_:Uint256) = IVault.getTotalSupply(_vault)
     __setNewMintFromSelf(_vault, assetManager_ ,tokenId_)
 
@@ -814,6 +834,29 @@ func __addGlobalAllowedAsset{
     return __addGlobalAllowedAsset(
         _assetList_len= newAssetList_len,
         _assetList= newAssetList,
+        _integrationManager= _integrationManager
+        )
+end
+
+func __addGlobalAllowedExternalPosition{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(_externalPositionList_len:felt, _externalPositionList:felt*, _integrationManager:felt) -> ():
+    alloc_locals
+    onlyOwner()
+    if _externalPositionList_len == 0:
+        return ()
+    end
+    let externalPosition_:felt = [_externalPositionList]
+    IIntegrationManager.setAvailableExternalPosition(_integrationManager, externalPosition_)
+
+    let newExternalPositionList_len:felt = _externalPositionList_len -1
+    let newExternalPositionList:felt* = _externalPositionList + 1
+
+    return __addGlobalAllowedExternalPosition(
+        _externalPositionList_len= newExternalPositionList_len,
+        _externalPositionList= newExternalPositionList,
         _integrationManager= _integrationManager
         )
 end
@@ -933,7 +976,6 @@ func __addAllowedIntegration{
     )
 end
 
-@external
 func __addAllowedDepositors{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -957,6 +999,7 @@ func __addAllowedDepositors{
         )
 end
 
+#to be removed once tracker up
 
 func __setNewMintFromSelf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _vault: felt, _caller:felt, _tokenId:Uint256):
