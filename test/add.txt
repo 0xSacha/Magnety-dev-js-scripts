@@ -1,7 +1,3 @@
-contract vaultFactory has been added to the context, address 0x0783e102c476819d520ce5a831f9c1ae8281e7fbe9b74838ece6880b97c63ab5
-contract saver has been added to the context, address 0x0088eeb407649664a83ddfad83c88e272d7a2800343a61292ca9643fa736c0be
-vaultFactory addr: 0x0783e102c476819d520ce5a831f9c1ae8281e7fbe9b74838ece6880b97c63ab5
-ontract comptroller has been added to the context, address 0x06f1b63b114deff1eaca86397aeb7fc6cf103d3b93de6385f3898fc54ed6f757
-contract feeManager has been added to the context, address 0x029d158b28b4153285e97031947bb463bb5fcdfa4f16a9acbb814638de5a0e80
-contract integrationManager has been added to the context, address 0x060e5092ec2fd00bfde8f84a6581311c837a8b6ba7c8860f6ae3cb1a5bd56b30
-contract policyManager has been added to the context, address 0x06b6e67386195280864a69254cad5afcb537ab2a338104d9a1e65259fdcef763
+contract vaultFactory has been added to the context, address 0x04bbe22585942255a955363cac24f33c449f8624785c437152360ab8012fad22
+
+

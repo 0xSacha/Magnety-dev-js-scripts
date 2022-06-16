@@ -45,11 +45,15 @@ export function getInitialContext() {
         await deployContracts(ctx, contractInfos)
     }
 
+    ctx.loadContracts = async (contracsInfos: IContractInfoDeploy[]) => {
+        await loadContracts(ctx, contracsInfos)
+    }
+
     ctx.execute = async (_caller: string, _contract: string, selector: string, params: any) => {
         let account: IAccount = ctx[_caller]
         let contract: StarknetContract = ctx[_contract]
 
-        let res = await account.invoke(contract, selector, params)
+        let res = await account.invoke(contract, selector, params, { maxFee: BigInt("8631493702974000000") })
         return res
     }
 
@@ -64,6 +68,8 @@ export function getInitialContext() {
     ctx.deployAccounts = async (names: string[]) => {
         await deployAccounts(ctx, names)
     }
+
+
 
     ctx.loadMainAccount = async () => {
         await loadMainAccount(ctx)
@@ -86,7 +92,6 @@ export async function deployContracts(ctx: any, contractInfos: IContractInfo[]) 
                 const contract = await contractFactory.deploy(params)
                 console.log("contract factory deployed")
                 resolve(contract)
-                contractFactory.getContractAt
             }
             catch (err) {
                 reject(err)
@@ -107,7 +112,7 @@ export async function deployContracts(ctx: any, contractInfos: IContractInfo[]) 
 }
 
 export async function loadContracts(ctx: any, contractInfos: IContractInfoDeploy[]) {
-    console.log("deployContracts invoked")
+    console.log("load contracts invoked")
     let promiseContainer: Promise<StarknetContract>[] = []
     for (let i in contractInfos) {
         const { name, src, address } = contractInfos[i]
@@ -119,7 +124,6 @@ export async function loadContracts(ctx: any, contractInfos: IContractInfoDeploy
                 const contract = await contractFactory.getContractAt(address)
                 console.log("contract loaded")
                 resolve(contract)
-                contractFactory.getContractAt
             }
             catch (err) {
                 reject(err)
