@@ -363,8 +363,6 @@ func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     # mint share
     __mintShare(_vault, caller, shareAmount_, sharePrice_)
-
-
     return ()
 end
 
@@ -402,10 +400,10 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         assert_le(timelock_, diffTimesTamp_)
     end
 
-
+s
     let (share_price) = getSharePrice(_vault)
     let (value_low:Uint256,_) = uint256_mul(share_price, share_amount)
-    let (sharesValue:Uint256,) = uint256_div(share_price, share_amount)
+    let (sharesValue:Uint256,) = uint256_div(value_low, POW18)
 
     # calc value of share
 

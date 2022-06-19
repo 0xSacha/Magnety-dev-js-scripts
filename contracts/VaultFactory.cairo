@@ -312,6 +312,26 @@ func getPrimitivePriceFeed{
     return(res)
 end
 
+@view
+func getDaoTreasury{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = daoTreasury.read()
+    return(res)
+end
+
+@view
+func getStackingVault{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = stackingVault.read()
+    return(res)
+end
+
 
 
 #get Share info, helper to fetch info for the frontend, to be removed once tracker is implemented
@@ -605,7 +625,7 @@ func setNewMint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (caller_:felt) = get_caller_address()
     let (comptroller_:felt) = comptroller.read()
     with_attr error_message("setNewMint: not allowed caller"):
-        assert_not_zero(caller_  - comptroller_)
+        assert caller_  = comptroller_
     end
     let (currentCallerShareAmount_:felt) = userShareAmount.read(_caller)
     idToShareInfo.write(_caller, currentCallerShareAmount_, ShareInfo(_vault, _tokenId))
@@ -620,7 +640,7 @@ func setNewBurn{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (caller_:felt) = get_caller_address()
     let (comptroller_:felt) = comptroller.read()
     with_attr error_message("setNewMint: not allowed caller"):
-        assert_not_zero(caller_  - comptroller_)
+        assert caller_ = comptroller_
     end
 
     let (currentCallerShareAmount_:felt) = userShareAmount.read(_caller)
@@ -699,10 +719,6 @@ func initializeFund{
     end
 
     let (assetManager_: felt) = get_caller_address()
-    let (isupportedPriceFeed_:felt) = IPontisPriceFeedMixin.checkIsSupportedPrimitiveAsset(primitivePriceFeed_, _denominationAsset)
-    with_attr error_message("initializeFund: denomination asset has to be a supported primitive"):
-        assert isupportedPriceFeed_ = 1
-    end
     let (allowDeno_: felt*) = alloc()
     assert [allowDeno_] = _denominationAsset
     __addAllowedAsset(1, allowDeno_, _vault, integrationManager_, policyManager_)

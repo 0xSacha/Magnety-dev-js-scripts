@@ -53,7 +53,7 @@ export function getInitialContext() {
         let account: IAccount = ctx[_caller]
         let contract: StarknetContract = ctx[_contract]
 
-        let res = await account.invoke(contract, selector, params, { maxFee: BigInt("8631493702974000000") })
+        let res = await account.invoke(contract, selector, params, { maxFee: 1213494254503700 })
         return res
     }
 
