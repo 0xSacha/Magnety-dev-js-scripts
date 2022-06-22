@@ -19,17 +19,19 @@ const PontisKey = ""
 const ARFSwapControlleur = "0x04aec73f0611a9be0524e7ef21ab1679bdf9c97dc7d72614f15373d431226b6a"
 const ARFPoolFactory = "0x00373c71f077b96cbe7a57225cd503d29cadb0056ed741a058094234d82de2f9"
 // Token
+// Token
 const Eth = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
 const EthUsdKey = "28556963469423460"
 const BTC = "0x072df4dc5b6c4df72e4288857317caf2ce9da166ab8719ab8306516a2fddfff7"
 const ZKP = "0x07a6dde277913b4e30163974bf3d8ed263abb7c7700a18524f5edf38a13d39ec"
-const TST = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+const TST = "0x07394cbe418daa16e42b87ba67372d4ab4a5df0b05c6e554d158458ce245bc10"
 
 // LP
 const Eth_ZKP = "0x068f02f0573d85b5d54942eea4c1bf97c38ca0e3e34fe3c974d1a3feef6c33be"
-const BTC_TST = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
-const ETH_TST = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
-const ETH_BTC = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+const BTC_TST = "0x06d0845eb49bcbef8c91f9717623b56331cc4205a5113bddef98ec40f050edc8"
+const ETH_TST = "0x0212040ea46c99455a30b62bfe9239f100271a198a0fdf0e86befc30e510e443"
+const ETH_BTC = "0x061fdcf831f23d070b26a4fdc9d43c2fbba1928a529f51b5335cd7b738f97945"
+
 const ARFLiquidity = "0x07b6036caf1baefaace9f5cd72194e1a3f7f0ed6e883cf8fefe68a1e968579a1"
 const ARFSwap = "0x03325e38ced6b1aed89da2ee72b267fe4b9b8ebc6ba4ba220ce25a7fae64f460"
 
@@ -119,32 +121,31 @@ describe("Deploy and initialize infrastrcture", function () {
     // });
 
     it("should initialize dependencies", async function () {
-        //allowed account for initialization
-        await ctx.execute("master", "vaultFactory", "claimOwnership", {})
+        // await ctx.execute("master", "vaultFactory", "claimOwnership", {})
 
-        await ctx.execute("master", "vaultFactory", "setComptroller", {
-            _comptrolleur: ctx.comptroller.address
-        })
-        await ctx.execute("master", "vaultFactory", "setOracle", {
-            _oracle: PontisOracle
-        })
-        //Extensions
-        await ctx.execute("master", "vaultFactory", "setFeeManager", {
-            _feeManager: ctx.feeManager.address
-        })
-        await ctx.execute("master", "vaultFactory", "setPolicyManager", {
-            _policyManager: ctx.policyManager.address
-        })
-        await ctx.execute("master", "vaultFactory", "setIntegrationManager", {
-            _integrationManager: ctx.integrationManager.address
-        })
-        //value Interpretor
-        await ctx.execute("master", "vaultFactory", "setValueInterpretor", {
-            _valueInterpretor: ctx.valueInterpretor.address
-        })
-        await ctx.execute("master", "vaultFactory", "setPrimitivePriceFeed", {
-            _primitivePriceFeed: ctx.pontisPriceFeedMixin.address
-        })
+        // await ctx.execute("master", "vaultFactory", "setComptroller", {
+        //     _comptrolleur: ctx.comptroller.address
+        // })
+        // await ctx.execute("master", "vaultFactory", "setOracle", {
+        //     _oracle: PontisOracle
+        // })
+        // //Extensions
+        // await ctx.execute("master", "vaultFactory", "setFeeManager", {
+        //     _feeManager: ctx.feeManager.address
+        // })
+        // await ctx.execute("master", "vaultFactory", "setPolicyManager", {
+        //     _policyManager: ctx.policyManager.address
+        // })
+        // await ctx.execute("master", "vaultFactory", "setIntegrationManager", {
+        //     _integrationManager: ctx.integrationManager.address
+        // })
+        // //value Interpretor
+        // await ctx.execute("master", "vaultFactory", "setValueInterpretor", {
+        //     _valueInterpretor: ctx.valueInterpretor.address
+        // })
+        // await ctx.execute("master", "vaultFactory", "setPrimitivePriceFeed", {
+        //     _primitivePriceFeed: ctx.pontisPriceFeedMixin.address
+        // })
 
         // await ctx.execute("master", "vaultFactory", "setStackingVault", {
         //     _stackingVault: ctx.bob.address
@@ -169,6 +170,7 @@ describe("Deploy and initialize infrastrcture", function () {
             _asset: Eth, _key: felt("eth/usd")
         })
 
+
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
             _derivative: Eth_ZKP, _priceFeed: ctx.alphaRoadFinanceLP.address
         }).then(() => console.log("donnnnnnnnee"))
@@ -179,9 +181,29 @@ describe("Deploy and initialize infrastrcture", function () {
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
             _derivative: ETH_TST, _priceFeed: ctx.alphaRoadFinanceLP.address
         })
+        console.log("step2")
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
             _derivative: BTC_TST, _priceFeed: ctx.alphaRoadFinanceLP.address
         })
+
+
+
+        // await ctx.execute("master", "valueInterpretor", "addDerivative", {
+        //     _derivative: BTC, _priceFeed: ctx.alphaRoadFinanceToken.address
+        // })
+        // await ctx.execute("master", "valueInterpretor", "addDerivative", {
+        //     _derivative: ZKP, _priceFeed: ctx.alphaRoadFinanceToken.address
+        // })
+        // await ctx.execute("master", "valueInterpretor", "addDerivative", {
+        //     _derivative: TST, _priceFeed: ctx.alphaRoadFinanceToken.address
+        // })
+
+        // await ctx.execute("master", "alphaRoadFinanceToken", "setIARFSwapController", {
+        //     _IARFSwapController: ARFSwapControlleur,
+        // })
+    });
+
+    it("should initialize dependencies", async function () {
 
 
         await ctx.execute("master", "alphaRoadFinanceToken", "addPoolAddress", {
@@ -195,7 +217,6 @@ describe("Deploy and initialize infrastrcture", function () {
         await ctx.execute("master", "alphaRoadFinanceToken", "addPoolAddress", {
             _derivative: ZKP, _pool: Eth_ZKP
         })
-
 
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
             _derivative: BTC, _priceFeed: ctx.alphaRoadFinanceToken.address
@@ -216,77 +237,6 @@ describe("Deploy and initialize infrastrcture", function () {
         })
 
     });
-
-    // it("should initialize dependencies", async function () {
-    //     let comptrollerAddress = ctx.comptroller.address
-    //     let feeManagerAddress = ctx.feeManager.address
-    //     let policyManagerAddress = ctx.policyManager.address
-    //     let mockPontisAddress = ctx.mockPontis.address
-    //     let integrationManagerAddress = ctx.integrationManager.address
-    //     let pontisPriceFeedMixinAddress = ctx.pontisPriceFeedMixin.address
-    //     let valueInterpretorAddress = ctx.valueInterpretor.address
-
-    //     let btcAddress = ctx.btc.address
-    //     let ethAddress = ctx.eth.address
-
-    //     await ctx.execute("alice", "vaultFactory", "setComptroller", {
-    //         _comptrolleur: comptrollerAddress
-    //     })
-    //     await ctx.execute("alice", "vaultFactory", "setOracle", {
-    //         _oracle: mockPontisAddress
-    //     })
-    //     await ctx.execute("alice", "vaultFactory", "setFeeManager", {
-    //         _feeManager: feeManagerAddress
-    //     })
-    //     await ctx.execute("alice", "vaultFactory", "setPolicyManager", {
-    //         _policyManager: policyManagerAddress
-    //     })
-    //     await ctx.execute("alice", "vaultFactory", "setIntegrationManager", {
-    //         _integrationManager: integrationManagerAddress
-    //     })
-    //     await ctx.execute("alice", "vaultFactory", "setValueInterpretor", {
-    //         _valueInterpretor: valueInterpretorAddress
-    //     })
-    //     await ctx.execute("alice", "vaultFactory", "setPrimitivePriceFeed", {
-    //         _primitivePriceFeed: pontisPriceFeedMixinAddress
-    //     })
-
-    //     console.log("set value price feed btc usd")
-    //     await ctx.execute("alice", "mockPontis", "set_value", {
-    //         key: felt("btc/usd"), value: 30000000000000000000000n
-    //     })
-    //     console.log("set value price feed eth usd")
-    //     await ctx.execute("alice", "mockPontis", "set_value", {
-    //         key: felt("eth/usd"), value: 2000000000000000000000n
-    //     })
-
-    //     await ctx.execute("alice", "pontisPriceFeedMixin", "addPrimitive", {
-    //         _asset: ethAddress, _key: felt("eth/usd")
-    //     })
-
-    //     await ctx.execute("alice", "pontisPriceFeedMixin", "addPrimitive", {
-    //         _asset: btcAddress, _key: felt("btc/usd")
-    //     })
-
-    //     await ctx.execute("alice", "vaultFactory", "addGlobalAllowedAsset", {
-    //         _assetList: [ethAddress, btcAddress]
-    //     })
-
-    //     // console.log("check if primitive is working")
-    //     // const btctoeth = await ctx.pontisPriceFeedMixin.call("calcAssetValueBmToDeno", { _baseAsset: btcAddress, _amount: { low: 1000000000000000000n, high: 0 }, _denominationAsset: ethAddress, })
-    //     // console.log(btctoeth)
-
-    //     // console.log("check asset available + approve available")
-    //     // const isAllowedAsseteth = await ctx.integrationManager.call("checkIsAssetAvailable", { _asset: ethAddress })
-    //     // console.log(isAllowedAsseteth)
-    //     // const isAllowedAssetbtc = await ctx.integrationManager.call("checkIsAssetAvailable", { _asset: btcAddress })
-    //     // console.log(isAllowedAssetbtc)
-    //     // const isAllowedIntegrationeth = await ctx.integrationManager.call("checkIsIntegrationAvailable", { _contract: ethAddress, _selector: 949021990203918389843157787496164629863144228991510976554585288817234167820n })
-    //     // console.log(isAllowedIntegrationeth)
-    //     // const isAllowedIntegrationbtc = await ctx.integrationManager.call("checkIsIntegrationAvailable", { _contract: btcAddress, _selector: 949021990203918389843157787496164629863144228991510976554585288817234167820n })
-    //     // console.log(isAllowedIntegrationbtc)
-
-    // });
     // it("should deploy vault, initialize it and activate it ", async function () {
     //     let vaultFactoryAddress = ctx.vaultFactory.address
     //     let comptrollerAddress = ctx.comptroller.address

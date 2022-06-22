@@ -95,6 +95,10 @@ func calculAssetValue{
         _denominationAsset:felt,
     ) -> (res:Uint256):
     alloc_locals
+    if _amount.low == 0:
+        return(Uint256(0,0))
+    end
+
     let (vaultFactory_:felt) = vaultFactory.read()
     let (primitivePriceFeed_:felt) = IVaultFactory.getPrimitivePriceFeed(vaultFactory_)
     let (isSupportedPrimitiveDenominationAsset_:felt) = IPontisPriceFeedMixin.checkIsSupportedPrimitiveAsset(primitivePriceFeed_, _denominationAsset)

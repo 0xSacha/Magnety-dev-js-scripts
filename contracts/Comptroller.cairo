@@ -48,21 +48,6 @@ const POW18 = 1000000000000000000
 func vaultFactory() -> (res : felt):
 end
 
-@storage_var
-func assetManagerVaultAmount(assetManager: felt) -> (res: felt):
-end
-
-@storage_var
-func assetManagerVault(assetManager: felt, vaultId: felt) -> (res: felt):
-end
-
-@storage_var
-func vaultAmount() -> (res: felt):
-end
-
-@storage_var
-func idToVault(id: felt) -> (res: felt):
-end
 
 
 #
@@ -168,7 +153,7 @@ func __get_fee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     let entranceFee = isEntrance * FeeConfig.ENTRANCE_FEE
     let exitFee = isExit * FeeConfig.EXIT_FEE
     let performanceFee = isPerformance * FeeConfig.PERFORMANCE_FEE
-    let managementFee = isManagement * FeeConfig.PERFORMANCE_FEE
+    let managementFee = isManagement * FeeConfig.MANAGEMENT_FEE
 
     let config = entranceFee + exitFee + performanceFee + managementFee
 
@@ -215,7 +200,10 @@ func addTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     alloc_locals
     onlyAssetManager(_vault)
     let (policyManager_:felt) = __getPolicyManager()
-    IPolicyManager.checkIsAllowedTrackedAsset(policyManager_, _vault, _asset)
+    let (res:felt) = IPolicyManager.checkIsAllowedTrackedAsset(policyManager_, _vault, _asset)
+    with_attr error_message("addTrackedAsset: this operation is now allowed"):
+        assert res = 1
+    end
     __addTrackedAsset(_asset, _vault)
     return ()
 end
@@ -234,7 +222,10 @@ func addTrackedExternalPosition{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
     alloc_locals
     onlyAssetManager(_vault)
     let (policyManager_:felt) = __getPolicyManager()
-    IPolicyManager.checkIsAllowedTrackedExternalPosition(policyManager_, _vault, _externalPosition)
+     let (res:felt) = IPolicyManager.checkIsAllowedTrackedExternalPosition(policyManager_, _vault, _externalPosition)
+    with_attr error_message("addTrackedExternalPosition: this operation is now allowed"):
+        assert res = 1
+    end
     __addTrackedExternalPosition(_externalPosition, _vault)
     return ()
 end
@@ -270,7 +261,7 @@ func executeCall{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
         assert [callData_] = _contract
         assert [callData_ + 1] = _selector
         assert [callData_ + 2] = _callData_len
-        memcpy(callData_, _callData + 3, _callData_len)
+        memcpy(callData_+3, _callData, _callData_len)
         IVault.receiveValidatedVaultAction(_vault, VaultAction.ExecuteCall, _callData_len +3, callData_)
         return()
     else:
@@ -400,10 +391,10 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         assert_le(timelock_, diffTimesTamp_)
     end
 
-s
+
     let (share_price) = getSharePrice(_vault)
     let (value_low:Uint256,_) = uint256_mul(share_price, share_amount)
-    let (sharesValue:Uint256,) = uint256_div(value_low, POW18)
+    let (sharesValue:Uint256,) = uint256_div(value_low, Uint256(POW18,0))
 
     # calc value of share
 
@@ -645,10 +636,11 @@ func __calculGav1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
         return (gav=Uint256(0, 0))
     end
 
-    let (gavOfRest) = __calculGav1(_vault=_vault, assets_len=assets_len - 1, assets=assets + 1)
     let(amount_:Uint256) = IVault.getAssetBalance(_vault, assets[0])
     let(denominationAsset_:felt) = IVault.getDenominationAsset(_vault)
     let (asset_value:Uint256) = getAssetValue(assets[0], amount_, denominationAsset_)
+    let (gavOfRest) = __calculGav1(_vault=_vault, assets_len=assets_len - 1, assets=assets + 1)
+
     let (gav, _) = uint256_add(asset_value, gavOfRest)
     return (gav=gav)
 end

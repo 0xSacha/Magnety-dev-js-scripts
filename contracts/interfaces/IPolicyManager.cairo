@@ -26,7 +26,7 @@ namespace IPolicyManager:
     #getters
     func getMaxminAmount(_vault: felt) -> (max : Uint256, min: Uint256):
     end
-    func checkIsAllowedTrackedAsset(_vault: felt, _asset: felt)-> (res : felt):
+    func checkIsAllowedTrackedAsset(_vault: felt, _asset: felt) -> (res : felt):
     end
     func checkIsAllowedTrackedExternalPosition(_vault: felt, _externalPosition: felt)-> (res : felt):
     end

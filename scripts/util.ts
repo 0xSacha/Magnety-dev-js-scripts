@@ -38,6 +38,13 @@ export async function loadMainAccount(ctx: any) {
 
 }
 
+export async function loadMainAccount2(ctx: any) {
+    const loadedAccount = await starknet.getAccountFromAddress("0x048f24b4Dd688cd9F6f2a9c47bc7185BAf34e1530215d05A4A7C4c761BC41E56", "0x1927DAB6AA02E0C5B6C7427397D8D16B49F4EDDE1FF7BF93D1F32E7B34BD2A9", "Argent");
+    ctx["master"] = loadedAccount
+    console.log(`contract Master has been added to the context, address ${ctx.master.starknetContract.address}`)
+
+}
+
 export function getInitialContext() {
     let ctx: any = {}
     ctx.deployContracts = async (contractInfos: IContractInfo[]) => {
@@ -53,7 +60,7 @@ export function getInitialContext() {
         let account: IAccount = ctx[_caller]
         let contract: StarknetContract = ctx[_contract]
 
-        let res = await account.invoke(contract, selector, params, { maxFee: 1213494254503700 })
+        let res = await account.invoke(contract, selector, params, { maxFee: 10000000000000000000000n })
         return res
     }
 
