@@ -4,7 +4,7 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.starknet.common.syscalls import get_caller_address
 
-from starkware.cairo.common.math import  assert_le
+from starkware.cairo.common.math import  assert_le, unsigned_div_rem
 from starkware.cairo.common.memcpy import memcpy
 
 from starkware.starknet.common.syscalls import get_block_timestamp
@@ -141,35 +141,7 @@ func calculGav{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return (gav=gav)
 end
 
-@view
-func __get_fee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        _vault:felt, key: felt, amount: Uint256) -> (fee: Uint256, fee_asset_manager:Uint256, fee_treasury: Uint256, fee_stacking_vault: Uint256):
-    alloc_locals
-    let (isEntrance) = __is_zero(key - FeeConfig.ENTRANCE_FEE)
-    let (isExit) = __is_zero(key - FeeConfig.EXIT_FEE)
-    let (isPerformance) = __is_zero(key - FeeConfig.PERFORMANCE_FEE)
-    let (isManagement) = __is_zero(key - FeeConfig.MANAGEMENT_FEE)
 
-    let entranceFee = isEntrance * FeeConfig.ENTRANCE_FEE
-    let exitFee = isExit * FeeConfig.EXIT_FEE
-    let performanceFee = isPerformance * FeeConfig.PERFORMANCE_FEE
-    let managementFee = isManagement * FeeConfig.MANAGEMENT_FEE
-
-    let config = entranceFee + exitFee + performanceFee + managementFee
-
-    let (feeManager_) = __getFeeManager()
-    let (percent) = IFeeManager.getFeeConfig(feeManager_, _vault, config)
-    let (percent_uint256) = felt_to_uint256(percent)
-
-    let (fee) = uint256_percent(amount, percent_uint256)
-    # 80% to the assetmanager, 16% to stacking vault, 4% to the DAOtreasury
-    # TODO: These value should be upgradable by the governance
-    let (fee_asset_manager) = uint256_percent(fee, Uint256(80,0))
-    let (fee_stacking_vault) = uint256_percent(fee, Uint256(16,0))
-    let (fee_treasury) = uint256_percent(fee, Uint256(4,0))
-
-    return (fee=fee, fee_asset_manager= fee_asset_manager,fee_treasury=fee_treasury, fee_stacking_vault=fee_stacking_vault)
-end
 
 @view
 func getManagementFeeValue{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -180,7 +152,8 @@ func getManagementFeeValue{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
     let (claimed_timestamp) = IFeeManager.getClaimedTimestamp(feeManager_, _vault)
     let (gav:Uint256) = calculGav(_vault)
     let interval_stamps = current_timestamp - claimed_timestamp
-    let interval_days = interval_stamps / 86400
+    let (interval_days:felt,_) = unsigned_div_rem(interval_stamps, 86400)
+
 
     let (APY, _, _, _) = __get_fee(_vault,FeeConfig.MANAGEMENT_FEE, gav)
     let (interval_days_uint256) = felt_to_uint256(interval_days)
@@ -448,6 +421,35 @@ end
 #
 #Internal
 #
+
+func __get_fee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        _vault:felt, key: felt, amount: Uint256) -> (fee: Uint256, fee_asset_manager:Uint256, fee_treasury: Uint256, fee_stacking_vault: Uint256):
+    alloc_locals
+    let (isEntrance) = __is_zero(key - FeeConfig.ENTRANCE_FEE)
+    let (isExit) = __is_zero(key - FeeConfig.EXIT_FEE)
+    let (isPerformance) = __is_zero(key - FeeConfig.PERFORMANCE_FEE)
+    let (isManagement) = __is_zero(key - FeeConfig.MANAGEMENT_FEE)
+
+    let entranceFee = isEntrance * FeeConfig.ENTRANCE_FEE
+    let exitFee = isExit * FeeConfig.EXIT_FEE
+    let performanceFee = isPerformance * FeeConfig.PERFORMANCE_FEE
+    let managementFee = isManagement * FeeConfig.MANAGEMENT_FEE
+
+    let config = entranceFee + exitFee + performanceFee + managementFee
+
+    let (feeManager_) = __getFeeManager()
+    let (percent) = IFeeManager.getFeeConfig(feeManager_, _vault, config)
+    let (percent_uint256) = felt_to_uint256(percent)
+
+    let (fee) = uint256_percent(amount, percent_uint256)
+    # 80% to the assetmanager, 16% to stacking vault, 4% to the DAOtreasury
+    # TODO: These value should be upgradable by the governance
+    let (fee_asset_manager) = uint256_percent(fee, Uint256(80,0))
+    let (fee_stacking_vault) = uint256_percent(fee, Uint256(16,0))
+    let (fee_treasury) = uint256_percent(fee, Uint256(4,0))
+
+    return (fee=fee, fee_asset_manager= fee_asset_manager,fee_treasury=fee_treasury, fee_stacking_vault=fee_stacking_vault)
+end
 
 func __addTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_asset: felt, _vault:felt):
     let (call_data : felt*) = alloc()

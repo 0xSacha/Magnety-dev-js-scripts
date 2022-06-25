@@ -102,21 +102,21 @@ describe("Deploy and initialize infrastrcture", function () {
 
 
 
-        // await ctx.execute("master", "vaultFactory", "setStackingVault", {
-        //     _stackingVault: "0x07F371dDc78A65Fe433354f8F7ca7dd132d94a935DBd9B19a1A0e8E8f7d36d9A"
-        // })
+        await ctx.execute("master", "vaultFactory", "setStackingVault", {
+            _stackingVault: "0x3acdb97d5fc69eeb39ba3517754372c88ccdcc8563d7c49636fde0b0a8f93da"
+        })
         // console.log("done")
         // await ctx.execute("master", "vaultFactory", "setDaoTreasury", {
         //     _daoTreasury: '0x049aC13B9fc396569EA6CC86D826A51A9AF2137527ac1337b43BF6a14E834748'
         // })
 
-        await ctx.execute("master", "alphaRoadFinanceToken", "setIARFSwapController", {
-            _IARFSwapController: ARFSwapControlleur,
-        })
+        // await ctx.execute("master", "alphaRoadFinanceToken", "setIARFSwapController", {
+        //     _IARFSwapController: ARFSwapControlleur,
+        // })
 
-        await ctx.execute("master", "alphaRoadFinanceLP", "setIARFSwapController", {
-            _IARFSwapController: ARFSwapControlleur,
-        })
+        // await ctx.execute("master", "alphaRoadFinanceLP", "setIARFSwapController", {
+        //     _IARFSwapController: ARFSwapControlleur,
+        // })
 
         // await ctx.deployContracts([
         //     { name: "vault", src: "Vault", params: { _vaultFactory: VF, _comptroller: comptroller } },
