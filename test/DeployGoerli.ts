@@ -23,13 +23,12 @@ const ARFPoolFactory = "0x00373c71f077b96cbe7a57225cd503d29cadb0056ed741a0580942
 const Eth = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
 const EthUsdKey = "28556963469423460"
 const BTC = "0x072df4dc5b6c4df72e4288857317caf2ce9da166ab8719ab8306516a2fddfff7"
-const ZKP = "0x07a6dde277913b4e30163974bf3d8ed263abb7c7700a18524f5edf38a13d39ec"
+const AST = "0x05a6b68181bb48501a7a447a3f99936827e41d77114728960f22892f02e24928"
 const TST = "0x07394cbe418daa16e42b87ba67372d4ab4a5df0b05c6e554d158458ce245bc10"
 
 // LP
-const Eth_ZKP = "0x068f02f0573d85b5d54942eea4c1bf97c38ca0e3e34fe3c974d1a3feef6c33be"
+const Eth_AST = "0x038bd0f8aff67ade736159d373cf3399d15529445b147b6b3348cc96cdf66ad8"
 const BTC_TST = "0x06d0845eb49bcbef8c91f9717623b56331cc4205a5113bddef98ec40f050edc8"
-const ETH_TST = "0x0212040ea46c99455a30b62bfe9239f100271a198a0fdf0e86befc30e510e443"
 const ETH_BTC = "0x061fdcf831f23d070b26a4fdc9d43c2fbba1928a529f51b5335cd7b738f97945"
 
 const ARFLiquidity = "0x07b6036caf1baefaace9f5cd72194e1a3f7f0ed6e883cf8fefe68a1e968579a1"
@@ -121,31 +120,31 @@ describe("Deploy and initialize infrastrcture", function () {
     // });
 
     it("should initialize dependencies", async function () {
-        // await ctx.execute("master", "vaultFactory", "claimOwnership", {})
+        await ctx.execute("master", "vaultFactory", "claimOwnership", {})
 
-        // await ctx.execute("master", "vaultFactory", "setComptroller", {
-        //     _comptrolleur: ctx.comptroller.address
-        // })
-        // await ctx.execute("master", "vaultFactory", "setOracle", {
-        //     _oracle: PontisOracle
-        // })
-        // //Extensions
-        // await ctx.execute("master", "vaultFactory", "setFeeManager", {
-        //     _feeManager: ctx.feeManager.address
-        // })
-        // await ctx.execute("master", "vaultFactory", "setPolicyManager", {
-        //     _policyManager: ctx.policyManager.address
-        // })
-        // await ctx.execute("master", "vaultFactory", "setIntegrationManager", {
-        //     _integrationManager: ctx.integrationManager.address
-        // })
-        // //value Interpretor
-        // await ctx.execute("master", "vaultFactory", "setValueInterpretor", {
-        //     _valueInterpretor: ctx.valueInterpretor.address
-        // })
-        // await ctx.execute("master", "vaultFactory", "setPrimitivePriceFeed", {
-        //     _primitivePriceFeed: ctx.pontisPriceFeedMixin.address
-        // })
+        await ctx.execute("master", "vaultFactory", "setComptroller", {
+            _comptrolleur: ctx.comptroller.address
+        })
+        await ctx.execute("master", "vaultFactory", "setOracle", {
+            _oracle: PontisOracle
+        })
+        //Extensions
+        await ctx.execute("master", "vaultFactory", "setFeeManager", {
+            _feeManager: ctx.feeManager.address
+        })
+        await ctx.execute("master", "vaultFactory", "setPolicyManager", {
+            _policyManager: ctx.policyManager.address
+        })
+        await ctx.execute("master", "vaultFactory", "setIntegrationManager", {
+            _integrationManager: ctx.integrationManager.address
+        })
+        //value Interpretor
+        await ctx.execute("master", "vaultFactory", "setValueInterpretor", {
+            _valueInterpretor: ctx.valueInterpretor.address
+        })
+        await ctx.execute("master", "vaultFactory", "setPrimitivePriceFeed", {
+            _primitivePriceFeed: ctx.pontisPriceFeedMixin.address
+        })
 
         // await ctx.execute("master", "vaultFactory", "setStackingVault", {
         //     _stackingVault: ctx.bob.address
@@ -157,36 +156,34 @@ describe("Deploy and initialize infrastrcture", function () {
     });
     it("Add global allowed Assets + ", async function () {
         await ctx.execute("master", "vaultFactory", "addGlobalAllowedAsset", {
-            _assetList: [BTC_TST, ETH_BTC, BTC, ETH_TST, Eth, Eth_ZKP, ZKP, TST]
+            _assetList: [Eth, BTC, TST, AST, BTC_TST, ETH_BTC, Eth_AST]
         })
+        console.log("global allowed asset added")
 
         await ctx.execute("master", "vaultFactory", "addGlobalAllowedIntegration", {
             _integrationList: [{ contract: ARFSwapControlleur, selector: swapExactTokensForTokens, integration: ARFSwap },
             { contract: ARFSwapControlleur, selector: addLiquidity, integration: ARFLiquidity },
             { contract: ARFSwapControlleur, selector: removeLiquidity, integration: "0" }]
         })
+        console.log("global allowed integration added")
 
         await ctx.execute("master", "pontisPriceFeedMixin", "addPrimitive", {
             _asset: Eth, _key: felt("eth/usd")
         })
-
-
-        await ctx.execute("master", "valueInterpretor", "addDerivative", {
-            _derivative: Eth_ZKP, _priceFeed: ctx.alphaRoadFinanceLP.address
-        }).then(() => console.log("donnnnnnnnee"))
+        console.log("step1")
 
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
             _derivative: ETH_BTC, _priceFeed: ctx.alphaRoadFinanceLP.address
-        })
+        }).then(() => console.log("donnnnnnnnee"))
+
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
-            _derivative: ETH_TST, _priceFeed: ctx.alphaRoadFinanceLP.address
+            _derivative: Eth_AST, _priceFeed: ctx.alphaRoadFinanceLP.address
         })
-        console.log("step2")
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
             _derivative: BTC_TST, _priceFeed: ctx.alphaRoadFinanceLP.address
         })
 
-
+        console.log("step2")
 
         // await ctx.execute("master", "valueInterpretor", "addDerivative", {
         //     _derivative: BTC, _priceFeed: ctx.alphaRoadFinanceToken.address
@@ -211,30 +208,31 @@ describe("Deploy and initialize infrastrcture", function () {
         })
 
         await ctx.execute("master", "alphaRoadFinanceToken", "addPoolAddress", {
-            _derivative: TST, _pool: ETH_TST
+            _derivative: TST, _pool: BTC_TST
         })
 
         await ctx.execute("master", "alphaRoadFinanceToken", "addPoolAddress", {
-            _derivative: ZKP, _pool: Eth_ZKP
+            _derivative: AST, _pool: Eth_AST
         })
+
 
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
             _derivative: BTC, _priceFeed: ctx.alphaRoadFinanceToken.address
         })
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
-            _derivative: ZKP, _priceFeed: ctx.alphaRoadFinanceToken.address
+            _derivative: AST, _priceFeed: ctx.alphaRoadFinanceToken.address
         })
         await ctx.execute("master", "valueInterpretor", "addDerivative", {
             _derivative: TST, _priceFeed: ctx.alphaRoadFinanceToken.address
         })
 
-        await ctx.execute("master", "alphaRoadFinanceToken", "setIARFSwapController", {
-            _IARFSwapController: ARFSwapControlleur,
-        })
+        // await ctx.execute("master", "alphaRoadFinanceToken", "setIARFSwapController", {
+        //     _IARFSwapController: ARFSwapControlleur,
+        // })
 
-        await ctx.execute("master", "alphaRoadFinanceLP", "setIARFSwapController", {
-            _IARFSwapController: ARFSwapControlleur,
-        })
+        // await ctx.execute("master", "alphaRoadFinanceLP", "setIARFSwapController", {
+        //     _IARFSwapController: ARFSwapControlleur,
+        // })
 
     });
     // it("should deploy vault, initialize it and activate it ", async function () {
