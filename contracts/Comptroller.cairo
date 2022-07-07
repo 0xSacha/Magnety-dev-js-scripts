@@ -35,6 +35,10 @@ from starkware.cairo.common.uint256 import (
 # from starkware.cairo.common.uint256 import
 from openzeppelin.security.safemath import uint256_checked_add, uint256_checked_sub_le
 
+from openzeppelin.security.reentrancyguard import ReentrancyGuard
+
+from openzeppelin.security.pausable import Pausable
+
 from contracts.interfaces.IVault import VaultAction, IVault
 
 from contracts.interfaces.IExternalPosition import IExternalPosition
@@ -263,6 +267,7 @@ end
 func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _vault: felt, _asset: felt, _amount: Uint256
 ):
+    ReentrancyGuard._start()
     alloc_locals
     let (denominationAsset_:felt) = IVault.getDenominationAsset(_vault)
     with_attr error_message("buy_share: you can only buy shares with the denomination asset of the vault"):
@@ -305,6 +310,7 @@ func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     __mintShare(_vault, caller, share_amount, share_price)
 
 
+    ReentrancyGuard._end()
     return ()
 end
 
@@ -340,6 +346,7 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     percents_len : felt,
     percents : felt*,
 ):
+    ReentrancyGuard._start()
     alloc_locals
 
     let (caller) = get_caller_address()
@@ -410,6 +417,8 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         ISaver.setNewBurn(saver_, _vault, caller, contractAddress_, token_id)
         return ()
     end
+    
+    ReentrancyGuard._end()
     return ()
 end
 
