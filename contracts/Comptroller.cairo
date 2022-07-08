@@ -188,6 +188,21 @@ func removeTrackedAsset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
 end
 
 @external
+func emergency_pause {syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> ():
+    Ownable.assert_only_owner()
+    Pausable._pause()
+    return ()
+end
+
+
+@external
+func emergency_unpause {syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> ():
+    Ownable.assert_only_owner()
+    Pausable._unpause()
+    return ()
+end
+
+@external
 func executeCall{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _vault:felt, _contract: felt, _selector: felt, _callData_len: felt, _callData: felt*):
     alloc_locals
