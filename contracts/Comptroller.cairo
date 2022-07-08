@@ -268,7 +268,11 @@ func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     _vault: felt, _asset: felt, _amount: Uint256
 ):
     ReentrancyGuard._start()
+
     alloc_locals
+
+
+    Pausable.assert_not_paused()
     let (denominationAsset_:felt) = IVault.getDenominationAsset(_vault)
     with_attr error_message("buy_share: you can only buy shares with the denomination asset of the vault"):
         assert (denominationAsset_ - _asset) = 0
@@ -311,6 +315,7 @@ func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
 
     ReentrancyGuard._end()
+
     return ()
 end
 
@@ -349,6 +354,7 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     ReentrancyGuard._start()
     alloc_locals
 
+    Pausable.assert_not_paused()
     let (caller) = get_caller_address()
     let (owner_) = IVault.getOwnerOf(_vault, token_id)
     with_attr error_message("sell_share: not owner of shares"):
