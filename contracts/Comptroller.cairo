@@ -29,7 +29,7 @@ from starkware.cairo.common.uint256 import (
 )
 
 # from starkware.cairo.common.uint256 import
-from openzeppelin.security.safemath import uint256_checked_sub_le
+from openzeppelin.security.safemath import SafeUint256
 
 from contracts.interfaces.IVault import VaultAction, IVault
 
@@ -384,7 +384,7 @@ func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let(current_share_price_:Uint256) = getSharePrice(_vault)
     let(has_performed_) = uint256_le(previous_share_price_, current_share_price_)
     if has_performed_ == 1 :
-        let(diff_:Uint256) = uint256_checked_sub_le(current_share_price_, previous_share_price_)
+        let(diff_:Uint256) = SafeUint256.sub_le(current_share_price_, previous_share_price_)
         let(diffperc_:Uint256,diffperc_h_) = uint256_mul(diff_, Uint256(100,0))
         let(perfF_:Uint256)=uint256_div(diffperc_, current_share_price_)
         tempvar perf_ = perfF_
