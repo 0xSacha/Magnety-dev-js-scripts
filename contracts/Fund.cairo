@@ -4,6 +4,7 @@ from starkware.starknet.common.syscalls import (
     get_contract_address,
     call_contract,
 )
+from contracts.interfaces.IVaultFactory import IVaultFactory
 
 from starkware.cairo.common.math import (
     assert_not_zero,
@@ -480,26 +481,6 @@ func getManagementFeeValue{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
     return(res=claimAmount_)
 end
 
-
-func checkCall{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        _contract: felt, _selector: felt, _callData_len: felt, _callData: felt*):
-    alloc_locals
-    #check if allowed call
-    let (integrationManager_) = __getIntegrationManager()
-    let (isAllowedCall_) = IPolicyManager.checkIsIntegrationAvailable(integrationManager_, _contract, _selector)
-    with_attr error_message("the operation is now allowed on Magnety"):
-        assert isAllowedCall_ = 1
-    end
-    #perform pre-call logic if necessary
-    let (preLogicContract:felt) = IIntegrationManager.getIntegration(integrationManager_, _contract, _selector)
-    let (isPreLogicNonRequired:felt) = __is_zero(preLogicContract)
-    if isPreLogicNonRequired ==  0:
-        IPreLogic.runPreLogic(preLogicContract, fund_, _callData_len, _callData)
-        return ()
-    end
-    return ()
-end
-
 func claimManagementFee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _assets_len : felt, _assets : felt*, _percents_len:felt, _percents: felt*,
 ):
@@ -568,7 +549,7 @@ end
 
 
 @external
-func sell_share{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func sellShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     token_id : Uint256,
     share_amount : Uint256,
     assets_len : felt,
