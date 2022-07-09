@@ -34,16 +34,10 @@ from starkware.cairo.common.uint256 import (
     uint256_unsigned_div_rem,
 )
 
+from openzeppelin.access.ownable import Ownable
 
 
-from openzeppelin.security.safemath import (
-    uint256_checked_add,
-    uint256_checked_sub_le,
-)
-
-from contracts.interfaces.IVault import IVault
-
-from contracts.interfaces.IComptroller import IComptroller
+from contracts.interfaces.IFuccount import IFuccount
 
 from contracts.interfaces.IFeeManager import IFeeManager, FeeConfig
 
@@ -61,10 +55,6 @@ from contracts.interfaces.IERC20 import IERC20
 #
 
 @event
-func ComptrollerSet(comptrollerLibAddress: felt):
-end
-
-@event
 func FeeManagerSet(feeManagerAddress: felt):
 end
 
@@ -73,19 +63,14 @@ func OracleSet(feeManagerAddress: felt):
 end
 
 @event
-func VaultInitalized(vaultLibAddress: felt):
+func FuccountActivated(fuccountAddress: felt):
 end
 
 const APPROVE_SELECTOR = 949021990203918389843157787496164629863144228991510976554585288817234167820
+const BUYSHARE_SELECTOR = 4484994747
 
 const POW18 = 1000000000000000000
-
 const POW20 = 100000000000000000000
-
-struct ShareInfo:
-    member contract: felt
-    member tokenId: Uint256
-end
 
 struct integration:
     member contract : felt
@@ -103,9 +88,6 @@ end
 func nominatedOwner() -> (res: felt):
 end
 
-@storage_var
-func comptroller() -> (res: felt):
-end
 
 @storage_var
 func oracle() -> (res: felt):
@@ -132,6 +114,10 @@ func primitivePriceFeed() -> (res: felt):
 end
 
 @storage_var
+func approvePreLogic() -> (res: felt):
+end
+
+@storage_var
 func assetManagerVaultAmount(assetManager: felt) -> (res: felt):
 end
 
@@ -155,33 +141,25 @@ end
 func daoTreasury() -> (res : felt):
 end
 
+#
+# Constructor 
+#
 
-@storage_var
-func userShareAmount(user:felt) -> (res: felt):
+
+@constructor
+func constructor{
+        syscall_ptr : felt*,
+        pedersen_ptr : HashBuiltin*,
+        range_check_ptr
+    }(owner: felt):
+   Ownable.initalizer(owner)
+    return ()
 end
-
-@storage_var
-func idToShareInfo(user:felt ,id: felt) -> (res: ShareInfo):
-end
-
-@storage_var
-func shareInfoToId(share:ShareInfo) -> (id: felt):
-end
-
 
 
 #
 # Modifier 
 #
-
-func onlyOwner{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}():
-    let (owner_) = owner.read()
-    let (caller_) = get_caller_address()
-    with_attr error_message("onlyOwner: only callable by the owner"):
-        assert caller_ = owner_
-    end
-    return ()
-end
 
 func onlyDependenciesSet{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}():
     let (areDependenciesSet_:felt) = areDependenciesSet()
@@ -193,16 +171,12 @@ end
 
 func onlyAssetManager{pedersen_ptr : HashBuiltin*, syscall_ptr : felt*, range_check_ptr}(_vault:felt):
     let (caller_:felt) = get_caller_address()
-    let (assetManager_:felt) = IVault.getAssetManager(_vault)
+    let (assetManager_:felt) = IFuccount.getManagerAccount(_vault)
     with_attr error_message("addAllowedDepositors: caller is not asset manager"):
         assert caller_ = assetManager_
     end
     return ()
 end
-
-
-    
-
 
 #
 # Getters 
@@ -222,7 +196,8 @@ func areDependenciesSet{
     let (integrationManager_:felt) = getIntegrationManager()
     let (valueInterpretor_:felt) = getValueInterpretor()
     let (primitivePriceFeed_:felt) = getPrimitivePriceFeed()
-    let  mul_:felt = comptroller_ * oracle_ * feeManager_ * policyManager_ * integrationManager_ * valueInterpretor_ * primitivePriceFeed_
+    let (approvePreLogic_:felt) = getApprovePreLogic()
+    let  mul_:felt = approvePreLogic_ * comptroller_ * oracle_ * feeManager_ * policyManager_ * integrationManager_ * valueInterpretor_ * primitivePriceFeed_
     let (isZero_:felt) = __is_zero(mul_)
     if isZero_ == 1:
         return (res = 0)
@@ -237,7 +212,7 @@ func getOwner{
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
     }() -> (res: felt):
-    let (res:felt) = owner.read()
+    let (res:felt) = Ownable.owner()
     return(res)
 end
 
@@ -313,6 +288,16 @@ func getPrimitivePriceFeed{
 end
 
 @view
+func getApprovePreLogic{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (res: felt):
+    let (res:felt) = approvePreLogic.read()
+    return(res)
+end
+
+@view
 func getDaoTreasury{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -334,22 +319,7 @@ end
 
 
 
-#get Share info, helper to fetch info for the frontend, to be removed once tracker is implemented
 
-@view
-func getUserShareAmount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_user: felt) -> (
-        amount:felt):
-    let (amount) = userShareAmount.read(_user)
-    return (amount)
-end
-
-
-@view
-func getUserShareInfo{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_user: felt, id: felt) -> (
-        info:ShareInfo):
-    let (info_:ShareInfo) = idToShareInfo.read(_user, id)
-    return (info=info_)
-end
 
 
 #get Vault info helper to fetch info for the frontend, to be removed once tracker is implemented
@@ -392,51 +362,16 @@ end
 #
 
 @external
-func claimOwnership{
-        pedersen_ptr: HashBuiltin*, 
-        syscall_ptr: felt*, 
-        range_check_ptr
-    }():
-    let (caller_:felt) = get_caller_address()
-    let (nominatedOwner_:felt) = nominatedOwner.read()
-    let (currentOwner_:felt) = owner.read()
-    if currentOwner_ == 0:
-        owner.write(caller_)
-        return ()
-    else:
-        with_attr error_message("claimOwnership: you are not the nominated owner"):
-        assert caller_ = nominatedOwner_
-        end
-        owner.write(caller_)
-        return ()
-    end
-end
-
-@external
-func setNewOwner{
-        pedersen_ptr: HashBuiltin*, 
-        syscall_ptr: felt*, 
-        range_check_ptr
-    }(_nominatedOwner:felt):
-    onlyOwner()
-    nominatedOwner.write(_nominatedOwner)
+func transferOwnership{
+            syscall_ptr : felt*,
+            pedersen_ptr : HashBuiltin*,
+            range_check_ptr
+        }(new_owner: felt):
+    Ownable.transfer_ownership(new_owner)
     return ()
 end
 
 
-#owner
-@external
-func setComptroller{
-        pedersen_ptr: HashBuiltin*, 
-        syscall_ptr: felt*, 
-        range_check_ptr
-    }(
-        _comptrolleur: felt,
-    ):
-    onlyOwner()
-    comptroller.write(_comptrolleur)
-    return ()
-end
 
 @external
 func setOracle{
@@ -446,7 +381,7 @@ func setOracle{
     }(
         _oracle: felt,
     ):
-    onlyOwner()
+    Ownable.assert_only_owner()
     oracle.write(_oracle)
     return ()
 end
@@ -459,7 +394,7 @@ func setFeeManager{
     }(
         _feeManager: felt,
     ):
-    onlyOwner()
+    Ownable.assert_only_owner()
     feeManager.write(_feeManager)
     return ()
 end
@@ -473,7 +408,7 @@ func setPolicyManager{
     }(
         _policyManager: felt,
     ):
-    onlyOwner()
+    Ownable.assert_only_owner()
     policyManager.write(_policyManager)
     return ()
 end
@@ -486,7 +421,7 @@ func setIntegrationManager{
     }(
         _integrationManager: felt,
     ):
-    onlyOwner()
+    Ownable.assert_only_owner()
     integrationManager.write(_integrationManager)
     return ()
 end
@@ -494,7 +429,7 @@ end
 @external
 func setValueInterpretor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _valueInterpretor : felt):
-    onlyOwner()
+    Ownable.assert_only_owner()
     valueInterpretor.write(_valueInterpretor)
     return ()
 end
@@ -502,7 +437,7 @@ end
 @external
 func setPrimitivePriceFeed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _primitivePriceFeed : felt):
-    onlyOwner()
+    Ownable.assert_only_owner()
     primitivePriceFeed.write(_primitivePriceFeed)
     return ()
 end
@@ -511,7 +446,7 @@ end
 @external
 func setStackingVault{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _stackingVault : felt):
-    onlyOwner()
+    Ownable.assert_only_owner()
     stackingVault.write(_stackingVault)
     return ()
 end
@@ -519,10 +454,11 @@ end
 @external
 func setDaoTreasury{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _daoTreasury : felt):
-    onlyOwner()
+    Ownable.assert_only_owner()
     daoTreasury.write(_daoTreasury)
     return ()
 end
+
 
 @external
 func addGlobalAllowedAsset{
@@ -531,7 +467,7 @@ func addGlobalAllowedAsset{
         range_check_ptr
     }(_assetList_len:felt, _assetList:felt*) -> ():
     alloc_locals
-    onlyOwner()
+    Ownable.assert_only_owner()
     onlyDependenciesSet()
     let (integrationManager_:felt) = integrationManager.read()
     __addGlobalAllowedAsset(_assetList_len, _assetList, integrationManager_)
@@ -545,7 +481,7 @@ func addGlobalAllowedExternalPosition{
         range_check_ptr
     }(_externalPositionList_len:felt, _externalPositionList:felt*) -> ():
     alloc_locals
-    onlyOwner()
+    Ownable.assert_only_owner()
     onlyDependenciesSet()
     let (integrationManager_:felt) = integrationManager.read()
     __addGlobalAllowedExternalPosition(_externalPositionList_len, _externalPositionList, integrationManager_)
@@ -559,7 +495,7 @@ func addGlobalAllowedIntegration{
         range_check_ptr
     }(_integrationList_len:felt, _integrationList:integration*) -> ():
     alloc_locals
-    onlyOwner()
+    Ownable.assert_only_owner()
     onlyDependenciesSet()
     let (integrationManager_:felt) = integrationManager.read()
     __addGlobalAllowedIntegration(_integrationList_len, _integrationList, integrationManager_)
@@ -588,77 +524,6 @@ func addAllowedDepositors{
 end
 
 
-#both next functions will be changed later, all policies/integrations change will have to be requested before the execution. Just usefull for testnet usage, for funds to add new available assets/integrations
-@external
-func addAllowedTrackedAsset{
-        syscall_ptr: felt*,
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }(_vault:felt, _trackedAsset_len: felt, _trackedAsset: felt*) -> ():
-    alloc_locals
-    onlyAssetManager(_vault)
-    let (policyManager_:felt) = policyManager.read()
-    let (integrationManager_:felt) = integrationManager.read()
-    __addAllowedAsset(_trackedAsset_len, _trackedAsset, _vault, integrationManager_, policyManager_)
-    return()
-end
-
-@external
-func addAllowedIntegration{
-        syscall_ptr: felt*,
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }(_vault:felt, _integration_len: felt, _integration: integration*) -> ():
-    alloc_locals
-    onlyAssetManager(_vault)
-    let (policyManager_:felt) = policyManager.read()
-    let (integrationManager_:felt) = integrationManager.read()
-    __addAllowedIntegration(_integration_len, _integration, _vault, integrationManager_, policyManager_)
-    return()
-end
-
-
-#comptroller, to be removed once tracker up
-@external
-func setNewMint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        _vault: felt, _caller:felt, _tokenId:Uint256):
-    let (caller_:felt) = get_caller_address()
-    let (comptroller_:felt) = comptroller.read()
-    with_attr error_message("setNewMint: not allowed caller"):
-        assert caller_  = comptroller_
-    end
-    let (currentCallerShareAmount_:felt) = userShareAmount.read(_caller)
-    idToShareInfo.write(_caller, currentCallerShareAmount_, ShareInfo(_vault, _tokenId))
-    shareInfoToId.write(ShareInfo(_vault, _tokenId), currentCallerShareAmount_)
-    userShareAmount.write(_caller, currentCallerShareAmount_ + 1)
-    return ()
-end
-
-@external
-func setNewBurn{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        _vault: felt, _caller:felt, _tokenId:Uint256):
-    let (caller_:felt) = get_caller_address()
-    let (comptroller_:felt) = comptroller.read()
-    with_attr error_message("setNewMint: not allowed caller"):
-        assert caller_ = comptroller_
-    end
-
-    let (currentCallerShareAmount_:felt) = userShareAmount.read(_caller)
-    let (ShareInfoLast:ShareInfo) = idToShareInfo.read(_caller, currentCallerShareAmount_ - 1)
-    idToShareInfo.write(_caller, currentCallerShareAmount_ - 1, ShareInfo(0,Uint256(0,0)))
-    
-    let (shareId_:felt) = shareInfoToId.read(ShareInfo(_vault, _tokenId)) 
-    idToShareInfo.write(_caller, shareId_, ShareInfoLast)
-    shareInfoToId.write(ShareInfoLast, shareId_)
-    shareInfoToId.write(ShareInfo(_vault, _tokenId), 0)
-    userShareAmount.write(_caller, currentCallerShareAmount_ - 1)
-    return ()
-end
-
-
-
-
-# Initialize a vault freshly deployed. We are not using factory contract because for beta version the user will first deploy an account/Fund  and then initialize it
 @external
 func initializeFund{
         syscall_ptr: felt*, 
@@ -683,7 +548,6 @@ func initializeFund{
     _isPublic:felt,
     ):
     alloc_locals
-
     onlyDependenciesSet()
     let (comptroller_:felt) = comptroller.read()
     let (feeManager_:felt) = feeManager.read()
@@ -691,7 +555,7 @@ func initializeFund{
     let (integrationManager_:felt) = integrationManager.read()
     let (primitivePriceFeed_:felt) = primitivePriceFeed.read()
 
-    let (name_:felt) = IVault.getName(_vault)
+    let (name_:felt) = IFuccount.getName(_vault)
     with_attr error_message("initializeFund: vault already initialized"):
         assert name_ = 0
     end
@@ -701,11 +565,9 @@ func initializeFund{
     end
 
     let (assetManager_: felt) = get_caller_address()
-    let (allowDeno_: felt*) = alloc()
-    assert [allowDeno_] = _denominationAsset
-    __addAllowedAsset(1, allowDeno_, _vault, integrationManager_, policyManager_)
-    #VaultProxy init
-    IVault.initializer(_vault, _fundName, _fundSymbol, assetManager_, _denominationAsset, _positionLimitAmount)
+
+    #Fuccount activater
+    IFuccount.activater(_vault, _fundName, _fundSymbol, assetManager_, _denominationAsset)
 
     #check allowed amount, min amount > decimal/1000 & share amount in [1, 100]
     let (decimals_:felt) = IERC20.decimals(_denominationAsset)
@@ -717,7 +579,7 @@ func initializeFund{
         assert allowedAmount_ *  allowedShareAmount1_ * allowedShareAmount2_= 1
     end
 
-    #save vault to be removed once tracker live
+    #save fund and add it to the global allowed integrations
     let (currentAssetManagerVaultAmount_: felt) = assetManagerVaultAmount.read(assetManager_)
     assetManagerVault.write(assetManager_, currentAssetManagerVaultAmount_, _vault)
     assetManagerVaultAmount.write(assetManager_, currentAssetManagerVaultAmount_ + 1)
@@ -725,14 +587,12 @@ func initializeFund{
     vaultAmount.write(currentVaultAmount + 1)
     idToVault.write(currentVaultAmount, _vault)
 
-    #save shares to be removed once tracker live
-    let (tokenId_:Uint256) = IVault.getTotalSupply(_vault)
-    __setNewMintFromSelf(_vault, assetManager_ ,tokenId_)
+
 
     # shares have 18 decimals
     let (amountPow18_:Uint256, _) = uint256_mul(_amount, Uint256(POW18,0))
     let (sharePricePurchased_:Uint256) = uint256_div(amountPow18_ , _shareAmount)
-    IComptroller.mintFromVF(comptroller_,_vault, assetManager_, _shareAmount, sharePricePurchased_)
+    IFuccount.mintFromVF(comptroller_,_vault, assetManager_, _shareAmount, sharePricePurchased_)
     IERC20.transferFrom(_denominationAsset, assetManager_, _vault, _amount)
     
     #Set feeconfig for vault
@@ -786,19 +646,12 @@ func initializeFund{
         IFeeManager.setClaimedTimestamp(feeManager_, _vault, timestamp_)
     end
 
-    IPolicyManager.setMaxminAmount(policyManager_, _vault, _maxAmount, _minAmount)
-
     # Policy config for fund
-    __addAllowedExternalPosition(_externalPositionList_len, _externalPositionList, _vault, integrationManager_, policyManager_)
-    __addAllowedAsset(_assetList_len, _assetList, _vault, integrationManager_, policyManager_)
-    __addAllowedIntegration(_integration_len, _integration, _vault, integrationManager_, policyManager_)
     IPolicyManager.setMaxminAmount(policyManager_, _vault, _maxAmount, _minAmount)
     IPolicyManager.setTimelock(policyManager_, _vault, _timelock)
     IPolicyManager.setIsPublic(policyManager_, _vault, _isPublic)
     return ()
 end
-
-
 
 func __is_zero{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         x: felt)-> (res:felt):
@@ -808,23 +661,20 @@ func __is_zero{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return (res=0)
 end
 
-
-
-
-
 func __addGlobalAllowedAsset{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
     }(_assetList_len:felt, _assetList:felt*, _integrationManager:felt) -> ():
     alloc_locals
-    onlyOwner()
+    Ownable.assert_only_owner()
     if _assetList_len == 0:
         return ()
     end
     let asset_:felt = [_assetList]
+    let (approvePreLogic_:felt) = getApprovePreLogic()
     IIntegrationManager.setAvailableAsset(_integrationManager, asset_)
-    IIntegrationManager.setAvailableIntegration(_integrationManager, asset_, APPROVE_SELECTOR, 0)
+    IIntegrationManager.setAvailableIntegration(_integrationManager, asset_, APPROVE_SELECTOR, approvePreLogic_)
 
     let newAssetList_len:felt = _assetList_len -1
     let newAssetList:felt* = _assetList + 1
@@ -842,7 +692,7 @@ func __addGlobalAllowedExternalPosition{
         range_check_ptr
     }(_externalPositionList_len:felt, _externalPositionList:felt*, _integrationManager:felt) -> ():
     alloc_locals
-    onlyOwner()
+    Ownable.assert_only_owner()
     if _externalPositionList_len == 0:
         return ()
     end
@@ -882,98 +732,6 @@ func __addGlobalAllowedIntegration{
         )
 end
 
-
-func __addAllowedAsset{
-        syscall_ptr: felt*,
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }(_assetList_len:felt, _assetList:felt*, _vault:felt, _integrationManager:felt, _policyManager:felt) -> ():
-    alloc_locals
-    if _assetList_len == 0:
-        return ()
-    end
-    let asset_:felt = [_assetList]
-    let (isAllowed_) = IIntegrationManager.checkIsAssetAvailable(_integrationManager, asset_)
-    with_attr error_message("__addAllowedAsset: asset not supported by Magnety"):
-        assert_not_zero(isAllowed_)
-    end
-    #allow track asset and already allow approve for any asset usecase (&&&&&& selector approve keccack)
-    IPolicyManager.setAllowedIntegration(_policyManager, _vault, asset_, APPROVE_SELECTOR)
-    IPolicyManager.setAllowedTrackedAsset(_policyManager, _vault, asset_)
-
-    let newAssetList_len:felt = _assetList_len -1
-    let newAssetList:felt* = _assetList + 1
-
-    return __addAllowedAsset(
-        _assetList_len= newAssetList_len,
-        _assetList= newAssetList,
-        _vault=_vault,
-        _integrationManager=_integrationManager,
-        _policyManager=_policyManager
-    )
-end
-
-func __addAllowedExternalPosition{
-        syscall_ptr: felt*,
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }(_externalPositionList_len:felt, _externalPositionList:felt*, _vault:felt, _integrationManager:felt, _policyManager:felt) -> ():
-    alloc_locals
-    if _externalPositionList_len == 0:
-        return ()
-    end
-    let externalPosition_:felt = [_externalPositionList]
-    let (isAllowed_) = IIntegrationManager.checkIsExternalPositionAvailable(_integrationManager, externalPosition_)
-    with_attr error_message("__addAllowedexternalPosition: externalPosition not supported by Magnety"):
-        assert_not_zero(isAllowed_)
-    end
-    #allow track externalPosition and already allow approve for any externalPosition usecase (&&&&&& selector approve keccack)
-    IPolicyManager.setAllowedTrackedExternalPosition(_policyManager, _vault, externalPosition_)
-
-    let newExternalPositionList_len:felt = _externalPositionList_len -1
-    let newExternalPositionList:felt* = _externalPositionList + 1
-
-    return __addAllowedExternalPosition(
-        _externalPositionList_len= newExternalPositionList_len,
-        _externalPositionList= newExternalPositionList,
-        _vault=_vault,
-        _integrationManager=_integrationManager,
-        _policyManager=_policyManager
-    )
-end
-
-
-func __addAllowedIntegration{
-        syscall_ptr: felt*,
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }(_integration_len: felt, _integration: integration*, _vault:felt, _integrationManager:felt, _policyManager:felt) -> ():
-    alloc_locals
-    if _integration_len == 0:
-        return ()
-    end
-
-    let integration_:integration = [_integration]
-    let (isAllowed_) = IIntegrationManager.checkIsIntegrationAvailable(_integrationManager, integration_.contract, integration_.selector)
-    with_attr error_message("__addAllowedAsset: integration not supported by Magnety"):
-        assert_not_zero(isAllowed_)
-    end
-
-    #allow integration to be used 
-    IPolicyManager.setAllowedIntegration(_policyManager, _vault, integration_.contract, integration_.selector)
-
-    let newIntegration_len:felt = _integration_len -1
-    let newIntegration:integration* = _integration + 3
-
-    return __addAllowedIntegration(
-        _integration_len= newIntegration_len,
-        _integration= newIntegration,
-        _vault=_vault,
-        _integrationManager=_integrationManager,
-        _policyManager=_policyManager
-    )
-end
-
 func __addAllowedDepositors{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -995,15 +753,4 @@ func __addAllowedDepositors{
         _depositors_len= newDepositors_len,
         _depositors= newDepositors,
         )
-end
-
-#to be removed once tracker up
-
-func __setNewMintFromSelf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        _vault: felt, _caller:felt, _tokenId:Uint256):
-    let (currentCallerShareAmount_:felt) = userShareAmount.read(_caller)
-    idToShareInfo.write(_caller, currentCallerShareAmount_, ShareInfo(_vault, _tokenId))
-    shareInfoToId.write(ShareInfo(_vault, _tokenId), currentCallerShareAmount_)
-    userShareAmount.write(_caller, currentCallerShareAmount_ + 1)
-    return ()
 end
