@@ -205,6 +205,9 @@ end
 @external
 func executeCall{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         _vault:felt, _contract: felt, _selector: felt, _callData_len: felt, _callData: felt*):
+
+    ReentrancyGuard._start()
+    Pausable.assert_not_paused()
     alloc_locals
     onlyAssetManager(_vault)
 
@@ -236,6 +239,9 @@ func executeCall{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     memcpy(callData_ +3, _callData, _callData_len)
     IVault.receiveValidatedVaultAction(_vault, VaultAction.ExecuteCall, _callData_len +3, callData_)
     return ()
+
+
+    ReentrancyGuard._end()
     end
 end
 
