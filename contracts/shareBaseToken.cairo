@@ -1,55 +1,29 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
-from starkware.cairo.common.uint256 import Uint256, uint256_check
+
+from starkware.cairo.common.uint256 import (
+    Uint256, uint256_check, uint256_add, uint256_sub, uint256_mul,
+    uint256_unsigned_div_rem, uint256_le, uint256_lt, uint256_eq
+)
 
 
 from starkware.starknet.common.syscalls import (
     get_block_timestamp, get_contract_address
 )
 
-
-from openzeppelin.utils.constants import (
-    TRUE, FALSE,
-)
-from openzeppelin.security.safemath import (
-    uint256_checked_add,
-    uint256_checked_sub_le,
-    uint256_eq,
-    uint256_lt,
+from starkware.cairo.common.bool import (
+    TRUE,
+    FALSE
 )
 
-from openzeppelin.token.erc721.library import (
-    ERC721_name_,
-    ERC721_symbol_,
-    ERC721_name,
-    ERC721_symbol,
-    ERC721_balanceOf,
-    ERC721_ownerOf,
-    ERC721_getApproved,
-    ERC721_isApprovedForAll,
+from openzeppelin.security.safemath import SafeUint256
 
-    ERC721_initializer,
-    ERC721_approve, 
-    ERC721_setApprovalForAll,
-    ERC721_only_token_owner,
-    _exists
+from openzeppelin.token.erc721.library import ERC721
 
-)
+from openzeppelin.token.erc721_enumerable.library import ERC721_Enumerable
 
-from openzeppelin.token.erc721_enumerable.library import (
-    ERC721_Enumerable_initializer,
-    ERC721_Enumerable_totalSupply,
-    ERC721_Enumerable_tokenByIndex,
-    ERC721_Enumerable_tokenOfOwnerByIndex,
-    ERC721_Enumerable_mint,
-    ERC721_Enumerable_burn,
-    ERC721_Enumerable_transferFrom,
-    ERC721_Enumerable_safeTransferFrom
-)
-
-from openzeppelin.introspection.ERC165 import ERC165_supports_interface
-
+from openzeppelin.introspection.ERC165 import ERC165
 
 #
 # Storage
@@ -71,9 +45,6 @@ end
 func ERC721_mintedBlockTimesTamp(token_id: Uint256) -> (res: felt):
 end
 
-
-
-
 #
 # Constructor
 #
@@ -87,8 +58,8 @@ func initializeShares{
         name: felt,
         symbol: felt,
     ):
-    ERC721_initializer(name, symbol)
-    ERC721_Enumerable_initializer()
+    ERC721.initializer(name, symbol)
+    ERC721_Enumerable.initializer()
     return ()
 end
 
@@ -102,7 +73,7 @@ func totalSupply{
         syscall_ptr: felt*, 
         range_check_ptr
     }() -> (totalSupply: Uint256):
-    let (totalSupply: Uint256) = ERC721_Enumerable_totalSupply()
+    let (totalSupply: Uint256) = ERC721_Enumerable.total_supply()
     return (totalSupply)
 end
 
@@ -122,7 +93,7 @@ func tokenByIndex{
         syscall_ptr: felt*, 
         range_check_ptr
     }(index: Uint256) -> (tokenId: Uint256):
-    let (tokenId: Uint256) = ERC721_Enumerable_tokenByIndex(index)
+    let (tokenId: Uint256) = ERC721_Enumerable.token_by_index(index)
     return (tokenId)
 end
 
@@ -132,7 +103,7 @@ func tokenOfOwnerByIndex{
         syscall_ptr: felt*, 
         range_check_ptr
     }(owner: felt, index: Uint256) -> (tokenId: Uint256):
-    let (tokenId: Uint256) = ERC721_Enumerable_tokenOfOwnerByIndex(owner, index)
+    let (tokenId: Uint256) = ERC721_Enumerable.token_of_owner_by_index(owner, index)
     return (tokenId)
 end
 
@@ -142,7 +113,7 @@ func supportsInterface{
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
     }(interfaceId: felt) -> (success: felt):
-    let (success) = ERC165_supports_interface(interfaceId)
+    let (success) = ERC165.supports_interface(interfaceId)
     return (success)
 end
 
@@ -152,7 +123,7 @@ func name{
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
     }() -> (name: felt):
-    let (name) = ERC721_name()
+    let (name) = ERC721.name()
     return (name)
 end
 
@@ -162,7 +133,7 @@ func symbol{
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
     }() -> (symbol: felt):
-    let (symbol) = ERC721_symbol()
+    let (symbol) = ERC721.symbol()
     return (symbol)
 end
 
@@ -172,7 +143,7 @@ func balanceOf{
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
     }(owner: felt) -> (balance: Uint256):
-    let (balance: Uint256) = ERC721_balanceOf(owner)
+    let (balance: Uint256) = ERC721.balance_of(owner)
     return (balance)
 end
 
@@ -183,7 +154,7 @@ func ownerOf{
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
     }(tokenId: Uint256) -> (owner: felt):
-    let (owner: felt) = ERC721_ownerOf(tokenId)
+    let (owner: felt) = ERC721.owner_of(tokenId)
     return (owner)
 end
 
@@ -193,7 +164,7 @@ func getApproved{
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
     }(tokenId: Uint256) -> (approved: felt):
-    let (approved: felt) = ERC721_getApproved(tokenId)
+    let (approved: felt) = ERC721.get_approved(tokenId)
     return (approved)
 end
 
@@ -203,7 +174,7 @@ func isApprovedForAll{
         pedersen_ptr : HashBuiltin*,
         range_check_ptr
     }(owner: felt, operator: felt) -> (isApproved: felt):
-    let (isApproved: felt) = ERC721_isApprovedForAll(owner, operator)
+    let (isApproved: felt) = ERC721.is_approved_for_all(owner, operator)
     return (isApproved)
 end
 
@@ -214,7 +185,7 @@ func sharesBalance{
         range_check_ptr
     }(tokenId: Uint256) -> (sharesBalance: Uint256):
 
-    let (exists) = _exists(tokenId)
+    let (exists) = ERC721._exists(tokenId)
     with_attr error_message("ERC721_Metadata: sharesBalance query for nonexistent token"):
         assert exists = TRUE
     end
@@ -230,7 +201,7 @@ func sharePricePurchased{
         range_check_ptr
     }(tokenId: Uint256) -> (sharePricePurchased: Uint256):
 
-    let (exists) = _exists(tokenId)
+    let (exists) = ERC721._exists(tokenId)
     with_attr error_message("ERC721_Metadata: sharePricePurchased query for nonexistent token"):
         assert exists = TRUE
     end
@@ -246,7 +217,7 @@ func mintedBlockTimesTamp{
         range_check_ptr
     }(tokenId: Uint256) -> (mintedBlockTimesTamp: felt):
 
-    let (exists) = _exists(tokenId)
+    let (exists) = ERC721._exists(tokenId)
     with_attr error_message("ERC721_Metadata: mintedBlock query for nonexistent token"):
         assert exists = TRUE
     end
@@ -263,32 +234,12 @@ end
 #
 
 @external
-func _setName{
-        pedersen_ptr: HashBuiltin*, 
-        syscall_ptr: felt*, 
-        range_check_ptr
-    }(_name:felt):
-    ERC721_name_.write(_name)
-    return ()
-end
-
-@external
-func _setSymbol{
-        pedersen_ptr: HashBuiltin*, 
-        syscall_ptr: felt*, 
-        range_check_ptr
-    }(_symbol:felt):
-    ERC721_symbol_.write(_symbol)
-    return ()
-end
-
-@external
 func approve{
         pedersen_ptr: HashBuiltin*, 
         syscall_ptr: felt*, 
         range_check_ptr
     }(to: felt, tokenId: Uint256):
-    ERC721_approve(to, tokenId)
+    ERC721.approve(to, tokenId)
     return ()
 end
 
@@ -298,7 +249,7 @@ func setApprovalForAll{
         pedersen_ptr: HashBuiltin*, 
         range_check_ptr
     }(operator: felt, approved: felt):
-    ERC721_setApprovalForAll(operator, approved)
+    ERC721.set_approval_for_all(operator, approved)
     return ()
 end
 
@@ -312,7 +263,7 @@ func transferSharesFrom{
         to: felt, 
         tokenId: Uint256
     ):
-    ERC721_Enumerable_transferFrom(from_, to, tokenId)
+    ERC721_Enumerable.transfer_from(from_, to, tokenId)
     return ()
 end
 
@@ -329,7 +280,7 @@ func safeTransferFrom{
         data_len: felt,
         data: felt*
     ):
-    ERC721_Enumerable_safeTransferFrom(from_, to, tokenId, data_len, data)
+    ERC721_Enumerable.safe_transfer_from(from_, to, tokenId, data_len, data)
     return ()
 end
 
@@ -341,7 +292,7 @@ func mint{
     }(to: felt, sharesAmount: Uint256, sharePricePurchased:Uint256):
     alloc_locals
     let (tokenId:Uint256) = totalSupply()
-    ERC721_Enumerable_mint(to, tokenId)
+    ERC721_Enumerable._mint(to, tokenId)
 
     #set metadata 
     ERC721_sharesBalance.write(tokenId, sharesAmount)
@@ -351,7 +302,7 @@ func mint{
 
     #set the new supply
     let (supply: Uint256) = ERC721_sharesTotalSupply.read()
-    let (new_supply: Uint256) = uint256_checked_add(supply, sharesAmount)
+    let (new_supply: Uint256) = SafeUint256.add(supply, sharesAmount)
     ERC721_sharesTotalSupply.write(new_supply)
     return ()
 end
@@ -363,7 +314,7 @@ func burn{
         range_check_ptr
     }(tokenId: Uint256):
     uint256_check(tokenId)
-    let (exists) = _exists(tokenId)
+    let (exists) = ERC721._exists(tokenId)
     with_attr error_message("ERC721_Metadata: sharesBalance query for nonexistent token"):
         assert exists = TRUE
     end
@@ -375,11 +326,11 @@ func burn{
 
     #set the new shares supply
     let (supply:Uint256) = ERC721_sharesTotalSupply.read()
-    let (new_supply:Uint256) = uint256_checked_sub_le(supply, shares)
+    let (new_supply:Uint256) = SafeUint256.add(supply, shares)
     ERC721_sharesTotalSupply.write(new_supply)
 
     #burn erc721
-    ERC721_Enumerable_burn(tokenId)
+    ERC721_Enumerable._burn(tokenId)
 
     return ()
 end
@@ -394,7 +345,7 @@ func subShares{
     uint256_check(tokenId)
     uint256_check(sharesToSub)
 
-    let (exists) = _exists(tokenId)
+    let (exists) = ERC721._exists(tokenId)
 
     with_attr error_message("ERC721_Metadata: sharesBalance query for nonexistent token"):
         assert exists = TRUE
@@ -415,17 +366,13 @@ func subShares{
     end
 
 
-    let (new_shares) = uint256_checked_sub_le(shares, sharesToSub)
+    let (new_shares) = SafeUint256.sub_le(shares, sharesToSub)
     ERC721_sharesBalance.write(tokenId, new_shares)
 
     #set the new shares supply
     let (supply:Uint256) = ERC721_sharesTotalSupply.read()
-    let (new_supply:Uint256) = uint256_checked_sub_le(supply, sharesToSub)
+    let (new_supply:Uint256) = SafeUint256.sub_le(supply, sharesToSub)
     ERC721_sharesTotalSupply.write(new_supply)
 
     return ()
 end
-
-
-
-
