@@ -6,9 +6,9 @@ from starkware.starknet.common.syscalls import get_caller_address
 from starkware.cairo.common.alloc import (
     alloc,
 )
-from openzeppelin.utils.constants import (
-    TRUE, FALSE,
-)
+
+
+from contracts.interfaces.IIntegrationManager import IIntegrationManager
 
 struct integration:
     member contract : felt

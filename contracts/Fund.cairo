@@ -1,3 +1,5 @@
+%lang starknet
+
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.starknet.common.syscalls import (
     get_caller_address, 
@@ -11,10 +13,12 @@ from starkware.cairo.common.math import (
     assert_not_equal,
     assert_le,
 )
+
+from starkware.cairo.common.bool import TRUE
+
 from starkware.starknet.common.syscalls import get_block_timestamp
 
 from starkware.cairo.common.memcpy import memcpy
-
 
 from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
 
@@ -30,6 +34,7 @@ from starkware.cairo.common.find_element import (
     find_element,
 )
 
+from contracts.interfaces.IIntegrationManager import IIntegrationManager
 
 from starkware.cairo.common.uint256 import (
     Uint256, 
@@ -38,17 +43,15 @@ from starkware.cairo.common.uint256 import (
     uint256_eq,
 )
 
-from openzeppelin.security.safemath import (
-    uint256_checked_add,
-    uint256_checked_sub_le,
-)
+from openzeppelin.security.safemath import SafeUint256
+
 
 from contracts.interfaces.IVault import (
     VaultAction,
 )
 
 
-from shareBaseToken import (
+from contracts.shareBaseToken import (
 
     #NFT Shares getters
     totalSupply,
@@ -71,7 +74,6 @@ from shareBaseToken import (
     #init
     initializeShares,
 )
-
 
 
 #
@@ -231,7 +233,7 @@ func getNotNulAssets{
     }() -> (notNulAssets_len:felt, notNulAssets: AssetInfo*):
     alloc_locals
     let (IM_:felt) = __getIntegrationManager()
-    let (availableAssets_len: felt, availableAssets:felt*) = IIntegrationManager.getAvailableAssets(IM_)
+    let (availableAssets_len: felt, availableAssets:felt*) = IIntegrationManager.getAvailableAssets(_contract=IM_)
     let (local notNulAssets : AssetInfo*) = alloc()
     let (notNulAssets_len:felt) = completeNonNulAssetTab(availableAssets_len, availableAssets, 0, notNulAssets)    
     return(notNulAssets_len, notNulAssets)
@@ -242,14 +244,14 @@ func completeNonNulAssetTab{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
-    }(availableAssets_len:felt, availableAssets:felt*, notNulAssets_len:felt notNulAssets:AssetInfo*,) -> (notNulAssets_len:felt):
+    }(availableAssets_len:felt, availableAssets:felt*, notNulAssets_len:felt, notNulAssets:AssetInfo*) -> (notNulAssets_len:felt):
     if availableAssets_len == 0:
         return (notNulAssets_len)
     end
     let newAvailableAssets_len = availableAssets_len - 1
     let (assetIndex_:felt) = availableAssets[newAvailableAssets_len] 
     let (assetBalance_:Uint256) = getAssetBalance(assetIndex_)
-    let (isZero_;felt) = __is_zero(assetBalance_.low)
+    let (isZero_:felt) = __is_zero(assetBalance_.low)
     if isZero_ == 0:
         assert notNulAssets[notNulAssets_len*AssetInfo.SIZE] = assetIndex_
         assert notNulAssets[notNulAssets_len*AssetInfo.SIZE +1] = assetBalance_
@@ -284,7 +286,7 @@ func getNotNulPositions{
     let (availableExternalPositions_len: felt, availableExternalPositions:felt*) = IIntegrationManager.getAvailableExternalPositions(IM_)
     let (local notNulExternalPositions : PositionInfo*) = alloc()
     let (notNulExternalPositions_len:felt) = completeNonNulPositionTab(availableExternalPositions_len, availableExternalPositions, 0, notNulExternalPositions)    
-    return(notNulAssets_len, notNulAssets)
+    return(notNulExternalPositions_len, notNulExternalPositions)
 end
 
 
@@ -292,16 +294,16 @@ func completeNonNulPositionTab{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
-    }(availableExternalPositions_len:felt, availableExternalPositions:felt*, notNulExternalPositions_len:felt notNulExternalPositions:PositionInfo*,) -> (notNulExternalPositions_len:felt):
+    }(availableExternalPositions_len:felt, availableExternalPositions:felt*, notNulExternalPositions_len:felt, notNulExternalPositions:PositionInfo*) -> (notNulExternalPositions_len:felt):
     if availableAssets_len == 0:
         return (notNulExternalPositions_len)
     end
     let newAvailableExternalPositions_len = availableExternalPositions_len - 1
-    let (externalPositionIndex_:felt) = availableAssets[newAvailableAssets_len] 
+    let (externalPositionIndex_:felt) = availableExternalPositions[availableExternalPositions_len] 
     let (denominationAsset_:felt) = denominationAsset.read()
     let (contractAddress_:felt) = get_contract_address()
     let (value_:Uint256) = calculAssetValue(externalPositionIndex_, Uint256(contractAddress_, 0), denominationAsset_)
-    let (isZero_;felt) = __is_zero(value_.low)
+    let (isZero_:felt) = __is_zero(value_.low)
     if isZero_ == 0:
         assert notNulExternalPositions[notNulExternalPositions_len*PositionInfo.SIZE] = externalPositionIndex_
         assert notNulExternalPositions[notNulExternalPositions_len*PositionInfo.SIZE + 1] = value_
