@@ -19,8 +19,6 @@ end
 func vaultFactory() -> (res: felt):
 end
 
-
-
 @storage_var
 func externalPositionAvailableLength() -> (res: felt):
 end
@@ -32,9 +30,6 @@ end
 @storage_var
 func isExternalPositionAvailable(externalPositionAddress: felt) -> (res: felt):
 end
-
-
-
 
 @storage_var
 func assetAvailableLength() -> (res: felt):
@@ -101,7 +96,6 @@ end
 #
 
 
-
 @view
 func checkIsAssetAvailable{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_asset: felt) -> (res: felt): 
     let (res) = isAssetAvailable.read(_asset)
@@ -120,12 +114,13 @@ func checkIsIntegrationAvailable{syscall_ptr : felt*, pedersen_ptr : HashBuiltin
     return (res=res)
 end
 
-
 @view
 func getIntegration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_contract: felt, _selector:felt) -> (res: felt): 
     let (res) = integrationContract.read(integration(_contract, _selector))
     return (res=res)
 end
+
+
 
 @view
 func getAvailableAssets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (availableAssets_len: felt, availableAssets:felt*): 

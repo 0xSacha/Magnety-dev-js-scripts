@@ -670,7 +670,6 @@ func initializeFund{
     _fundName:felt,
     _fundSymbol:felt,
     _denominationAsset:felt,
-    _positionLimitAmount:Uint256,
     _amount: Uint256,
     _shareAmount: Uint256,
     
@@ -678,25 +677,8 @@ func initializeFund{
     _feeConfig_len: felt,
     _feeConfig: felt*,
 
-    #allowed asset to be tracked
-    _assetList_len: felt,
-    _assetList: felt*,
-
-    #allowed external position to be tracked
-    _externalPositionList_len: felt,
-    _externalPositionList: felt*,
-
-    #allowed protocol to interact with 
-    _integration_len: felt,
-    _integration: integration*,
-
-    #min/max amount for depositors (with the denomination asset)
-    _minAmount:Uint256,
-    _maxAmount:Uint256,
-
     #Timelock before selling shares
     _timelock:felt,
-
     #allowed depositors 
     _isPublic:felt,
     ):
