@@ -8,6 +8,18 @@ cache
 __pycache__
 .pytest_cache
 
+.env
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Ss]cripts
+pyvenv.cfg
+.venv
+__pycache__
+pip-selfcheck.json
+
 #Starknet plugin
 starknet-artifacts
 contracts/contract.cairo
