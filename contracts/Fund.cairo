@@ -302,7 +302,8 @@ func completeNonNulPositionTab{
     let (externalPositionIndex_:felt) = availableExternalPositions[availableExternalPositions_len] 
     let (denominationAsset_:felt) = denominationAsset.read()
     let (contractAddress_:felt) = get_contract_address()
-    let (value_:Uint256) = calculAssetValue(externalPositionIndex_, Uint256(contractAddress_, 0), denominationAsset_)
+    let (VI_:felt) = __getValueInterpretor()
+    let (value_:Uint256) = IValueInterpretor.calculAssetValue(VI_, externalPositionIndex_, Uint256(contractAddress_, 0), denominationAsset_)
     let (isZero_:felt) = __is_zero(value_.low)
     if isZero_ == 0:
         assert notNulExternalPositions[notNulExternalPositions_len*PositionInfo.SIZE] = externalPositionIndex_
@@ -430,8 +431,7 @@ end
 func getAssetValue{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _asset: felt, _amount: Uint256, _denominationAsset: felt
 ) -> (value: Uint256):
-    let (vaultFactory_:felt) = vaultFactory.read()
-    let (valueInterpretor_:felt) = IVaultFactory.getValueInterpretor(vaultFactory_)
+    let (valueInterpretor_:felt) = __getValueInterpretor()
     let (value_:Uint256) = IValueInterpretor.calculAssetValue(valueInterpretor_, _asset, _amount, _denominationAsset)
     return (value=value_)
 end
@@ -847,6 +847,13 @@ func __getIntegrationManager{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
     return (res=integrationManager_)
 end
 
+func __getValueInterpretor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    res: felt
+):
+    let (vaultFactory_:felt) = vaultFactory.read()
+    let (valueInterpretor_:felt) = IVaultFactory.getValueInterpretor(vaultFactory_)
+    return (res=valueInterpretor_)
+end
 
 
 

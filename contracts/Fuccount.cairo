@@ -196,7 +196,6 @@ end
 
 ## Business 
 
-
 func getSharePrice{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
      price : Uint256
 ):
