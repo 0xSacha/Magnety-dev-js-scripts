@@ -1,4 +1,5 @@
 aiohttp
+wheel
 aiosignal
 asgiref
 async-timeout
@@ -15,7 +16,6 @@ charset-normalizer
 clang-format
 click
 contextvars
-cytoolz
 dill
 distlib
 ecdsa
