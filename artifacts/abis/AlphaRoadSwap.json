@@ -1,0 +1,21 @@
+[
+    {
+        "inputs": [
+            {
+                "name": "_vault",
+                "type": "felt"
+            },
+            {
+                "name": "_callData_len",
+                "type": "felt"
+            },
+            {
+                "name": "_callData",
+                "type": "felt*"
+            }
+        ],
+        "name": "runPreLogic",
+        "outputs": [],
+        "type": "function"
+    }
+]

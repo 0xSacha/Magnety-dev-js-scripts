@@ -1,0 +1,14 @@
+[
+    {
+        "data": [],
+        "keys": [],
+        "name": "CreateVault",
+        "type": "event"
+    },
+    {
+        "inputs": [],
+        "name": "createVault",
+        "outputs": [],
+        "type": "function"
+    }
+]

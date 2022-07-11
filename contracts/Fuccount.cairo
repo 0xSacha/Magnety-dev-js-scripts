@@ -2,9 +2,15 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin, BitwiseBuiltin
 
-from contracts.Account_Lib import Account, AccountCallArray
-from contracts.Fund import Fund
+
 from openzeppelin.introspection.ERC165 import ERC165
+
+from contracts.Account_Lib import Account, AccountCallArray
+from contracts.Fund import Fund, AssetInfo, PositionInfo
+
+from starkware.cairo.common.uint256 import (
+    Uint256,
+)
 
 
 # Constructor
@@ -20,6 +26,7 @@ func constructor{
     Fund.initializer(vaultFactory)
     return ()
 end
+
 
 #
 # Getters
@@ -48,8 +55,8 @@ func get_nonce{
 end
 
 @view
-func supportsInterface{
-        syscall_ptr: felt*,
+func supportsInterfaceFuccount{
+        syscall_ptr: felt*, 
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
     } (interfaceId: felt) -> (success: felt):
@@ -58,7 +65,7 @@ func supportsInterface{
 end
 
 ## Fund
-
+@view
 func getManagerAccount{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -67,7 +74,7 @@ func getManagerAccount{
     let (res:felt) = Fund.getManagerAccount()
     return (res) 
 end
-
+@view
 func getDenominationAsset{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -77,7 +84,7 @@ func getDenominationAsset{
     return (res=res)
 end
 
-
+@view
 func getAssetBalance{
         syscall_ptr: felt*,
         pedersen_ptr: HashBuiltin*,
@@ -307,7 +314,7 @@ end
 func claimManagementFee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     _assets_len : felt, _assets : felt*, _percents_len:felt, _percents: felt*,
 ):
-    Fund.claimManagementFee( _assets_len : felt, _assets : felt*, _percents_len, _percents)
+    Fund.claimManagementFee( _assets_len, _assets, _percents_len, _percents)
     return ()
 end
 
@@ -326,7 +333,7 @@ end
 
 
 @external
-func sellShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func sellShares{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     token_id : Uint256,
     share_amount : Uint256,
     assets_len : felt,

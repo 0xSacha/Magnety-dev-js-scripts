@@ -1,0 +1,195 @@
+[
+    {
+        "members": [
+            {
+                "name": "contract",
+                "offset": 0,
+                "type": "felt"
+            },
+            {
+                "name": "selector",
+                "offset": 1,
+                "type": "felt"
+            }
+        ],
+        "name": "integration",
+        "size": 2,
+        "type": "struct"
+    },
+    {
+        "inputs": [
+            {
+                "name": "_vaultFactory",
+                "type": "felt"
+            }
+        ],
+        "name": "constructor",
+        "outputs": [],
+        "type": "constructor"
+    },
+    {
+        "inputs": [
+            {
+                "name": "_asset",
+                "type": "felt"
+            }
+        ],
+        "name": "checkIsAssetAvailable",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "_externalPosition",
+                "type": "felt"
+            }
+        ],
+        "name": "checkIsExternalPositionAvailable",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "_contract",
+                "type": "felt"
+            },
+            {
+                "name": "_selector",
+                "type": "felt"
+            }
+        ],
+        "name": "checkIsIntegrationAvailable",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "_contract",
+                "type": "felt"
+            },
+            {
+                "name": "_selector",
+                "type": "felt"
+            }
+        ],
+        "name": "getIntegration",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getAvailableAssets",
+        "outputs": [
+            {
+                "name": "availableAssets_len",
+                "type": "felt"
+            },
+            {
+                "name": "availableAssets",
+                "type": "felt*"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getAvailableExternalPositions",
+        "outputs": [
+            {
+                "name": "availableExternalPositions_len",
+                "type": "felt"
+            },
+            {
+                "name": "availableExternalPositions",
+                "type": "felt*"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getAvailableIntegrations",
+        "outputs": [
+            {
+                "name": "availableIntegrations_len",
+                "type": "felt"
+            },
+            {
+                "name": "availableIntegrations",
+                "type": "integration*"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "_asset",
+                "type": "felt"
+            }
+        ],
+        "name": "setAvailableAsset",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "_externalPosition",
+                "type": "felt"
+            }
+        ],
+        "name": "setAvailableExternalPosition",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "_contract",
+                "type": "felt"
+            },
+            {
+                "name": "_selector",
+                "type": "felt"
+            },
+            {
+                "name": "_integration",
+                "type": "felt"
+            }
+        ],
+        "name": "setAvailableIntegration",
+        "outputs": [],
+        "type": "function"
+    }
+]

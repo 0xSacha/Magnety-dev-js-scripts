@@ -13,6 +13,9 @@ from starkware.starknet.common.syscalls import call_contract, get_caller_address
 from starkware.cairo.common.cairo_secp.signature import verify_eth_signature_uint256
 from openzeppelin.introspection.ERC165 import ERC165
 from contracts.interfaces.IVaultFactory import IVaultFactory
+# from contracts.interfaces.IPolicyManager import IPolicyManager
+from contracts.interfaces.IIntegrationManager import IIntegrationManager
+from contracts.interfaces.IPreLogic import IPreLogic
 
 from openzeppelin.utils.constants import IACCOUNT_ID
 
@@ -283,18 +286,16 @@ namespace Account:
         return (response_len=response_len, response=response)
     end
 
-    func _execute_list{syscall_ptr: felt*}(
+    func _execute_list{syscall_ptr: felt*,  pedersen_ptr: HashBuiltin*, range_check_ptr}(
             calls_len: felt,
             calls: Call*,
             response: felt*
         ) -> (response_len: felt):
         alloc_locals
-
         # if no more calls
         if calls_len == 0:
            return (0)
         end
-
         # do the current call
         let this_call: Call = [calls]
         _checkCall(this_call.to, this_call.selector, this_call.calldata_len, this_call.calldata)
@@ -317,15 +318,16 @@ namespace Account:
     #check if allowed call
     let (vaultFactory_:felt) = vaultFactory.read()
     let (integrationManager_:felt) = IVaultFactory.getIntegrationManager(vaultFactory_)
-    let (isAllowedCall_) = IPolicyManager.checkIsIntegrationAvailable(integrationManager_, _contract, _selector)
+    let (isAllowedCall_) = IIntegrationManager.checkIsIntegrationAvailable(integrationManager_, _contract, _selector)
     with_attr error_message("the operation is now allowed on Magnety"):
         assert isAllowedCall_ = 1
     end
     #perform pre-call logic if necessary
     let (preLogicContract:felt) = IIntegrationManager.getIntegration(integrationManager_, _contract, _selector)
     let (isPreLogicNonRequired:felt) = __is_zero(preLogicContract)
+    let (contractAddress_:felt) = get_contract_address()
     if isPreLogicNonRequired ==  0:
-        IPreLogic.runPreLogic(preLogicContract, fund_, _callData_len, _callData)
+        IPreLogic.runPreLogic(preLogicContract, contractAddress_, _callData_len, _callData)
         return ()
     end
     return ()
@@ -353,5 +355,15 @@ end
         _from_call_array_to_call(call_array_len - 1, call_array + AccountCallArray.SIZE, calldata, calls + Call.SIZE)
         return ()
     end
+
+    func __is_zero{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(x : felt) -> (
+    res : felt
+):
+    if x == 0:
+        return (res=1)
+    end
+    return (res=0)
+end
+
     
 end

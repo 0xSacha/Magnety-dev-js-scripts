@@ -12,7 +12,11 @@ from starkware.cairo.common.math import (
     assert_not_zero,
     assert_not_equal,
     assert_le,
+    unsigned_div_rem,
 )
+
+
+from contracts.utils.utils import felt_to_uint256, uint256_div, uint256_percent, uint256_pow
 
 from starkware.cairo.common.bool import TRUE
 
@@ -22,9 +26,9 @@ from starkware.cairo.common.memcpy import memcpy
 
 from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
 
-from contracts.utils.utils import (
-    felt_to_uint256,
-)
+from contracts.interfaces.IFeeManager import FeeConfig, IFeeManager
+from contracts.interfaces.IPolicyManager import IPolicyManager
+
 
 from starkware.cairo.common.alloc import (
     alloc,
@@ -35,13 +39,18 @@ from starkware.cairo.common.find_element import (
 )
 
 from contracts.interfaces.IIntegrationManager import IIntegrationManager
+from contracts.interfaces.IValueInterpretor import IValueInterpretor
 
 from starkware.cairo.common.uint256 import (
-    Uint256, 
+    Uint256,
+    uint256_sub,
     uint256_check,
     uint256_le,
     uint256_eq,
+    uint256_add,
+    uint256_mul,
 )
+
 
 from openzeppelin.security.safemath import SafeUint256
 
@@ -74,6 +83,8 @@ from contracts.shareBaseToken import (
     #init
     initializeShares,
 )
+
+const POW18 = 1000000000000000000
 
 
 #
@@ -233,7 +244,7 @@ func getNotNulAssets{
     }() -> (notNulAssets_len:felt, notNulAssets: AssetInfo*):
     alloc_locals
     let (IM_:felt) = __getIntegrationManager()
-    let (availableAssets_len: felt, availableAssets:felt*) = IIntegrationManager.getAvailableAssets(_contract=IM_)
+    let (availableAssets_len: felt, availableAssets:felt*) = IIntegrationManager.getAvailableAssets(IM_)
     let (local notNulAssets : AssetInfo*) = alloc()
     let (notNulAssets_len:felt) = completeNonNulAssetTab(availableAssets_len, availableAssets, 0, notNulAssets)    
     return(notNulAssets_len, notNulAssets)
@@ -245,19 +256,20 @@ func completeNonNulAssetTab{
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
     }(availableAssets_len:felt, availableAssets:felt*, notNulAssets_len:felt, notNulAssets:AssetInfo*) -> (notNulAssets_len:felt):
+    alloc_locals
     if availableAssets_len == 0:
         return (notNulAssets_len)
     end
     let newAvailableAssets_len = availableAssets_len - 1
-    let (assetIndex_:felt) = availableAssets[newAvailableAssets_len] 
+    let assetIndex_:felt = availableAssets[newAvailableAssets_len] 
     let (assetBalance_:Uint256) = getAssetBalance(assetIndex_)
     let (isZero_:felt) = __is_zero(assetBalance_.low)
     if isZero_ == 0:
-        assert notNulAssets[notNulAssets_len*AssetInfo.SIZE] = assetIndex_
-        assert notNulAssets[notNulAssets_len*AssetInfo.SIZE +1] = assetBalance_
+        assert notNulAssets[notNulAssets_len*AssetInfo.SIZE].address = assetIndex_
+        assert notNulAssets[notNulAssets_len*AssetInfo.SIZE].amount = assetBalance_
         let (denominationAsset_:felt) = denominationAsset.read()
         let (assetValue:Uint256) = getAssetValue(assetIndex_, assetBalance_, denominationAsset_)
-        assert notNulAssets[notNulAssets_len*AssetInfo.SIZE +3] = assetValue
+        assert notNulAssets[notNulAssets_len*AssetInfo.SIZE].valueInDeno = assetValue
         let newNotNulAssets_len = notNulAssets_len + 1
          return completeNonNulAssetTab(
         availableAssets_len=newAvailableAssets_len,
@@ -295,19 +307,20 @@ func completeNonNulPositionTab{
         pedersen_ptr: HashBuiltin*,
         range_check_ptr
     }(availableExternalPositions_len:felt, availableExternalPositions:felt*, notNulExternalPositions_len:felt, notNulExternalPositions:PositionInfo*) -> (notNulExternalPositions_len:felt):
-    if availableAssets_len == 0:
+    alloc_locals
+    if availableExternalPositions_len == 0:
         return (notNulExternalPositions_len)
     end
     let newAvailableExternalPositions_len = availableExternalPositions_len - 1
-    let (externalPositionIndex_:felt) = availableExternalPositions[availableExternalPositions_len] 
+    let externalPositionIndex_:felt = availableExternalPositions[availableExternalPositions_len] 
     let (denominationAsset_:felt) = denominationAsset.read()
     let (contractAddress_:felt) = get_contract_address()
     let (VI_:felt) = __getValueInterpretor()
     let (value_:Uint256) = IValueInterpretor.calculAssetValue(VI_, externalPositionIndex_, Uint256(contractAddress_, 0), denominationAsset_)
     let (isZero_:felt) = __is_zero(value_.low)
     if isZero_ == 0:
-        assert notNulExternalPositions[notNulExternalPositions_len*PositionInfo.SIZE] = externalPositionIndex_
-        assert notNulExternalPositions[notNulExternalPositions_len*PositionInfo.SIZE + 1] = value_
+        assert notNulExternalPositions[notNulExternalPositions_len*PositionInfo.SIZE].address = externalPositionIndex_
+        assert notNulExternalPositions[notNulExternalPositions_len*PositionInfo.SIZE].valueInDeno = value_
         let newNotNulExternalPositions_len = notNulExternalPositions_len +1
          return completeNonNulPositionTab(
         availableExternalPositions_len=newAvailableExternalPositions_len,
@@ -410,7 +423,7 @@ func getMintedTimesTamp{
         pedersen_ptr: HashBuiltin*, 
         range_check_ptr
     }(tokenId: Uint256) -> (mintedTimesTamp_: felt):
-    let (mintedTimesTamp_: felt) = mintedTimesTamp(tokenId)
+    let (mintedTimesTamp_:felt) = mintedBlockTimesTamp(tokenId)
     return (mintedTimesTamp_)
 end
 
@@ -472,7 +485,7 @@ func getManagementFeeValue{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
     let (feeManager_:felt) = __getFeeManager()
     let (fund_:felt) = get_contract_address()
     let (current_timestamp) = get_block_timestamp()
-    let (claimed_timestamp) = IFeeManager.getClaimedTimestamp(feeManager_)
+    let (claimed_timestamp) = IFeeManager.getClaimedTimestamp(feeManager_, fund_)
     let (gav:Uint256) = calculGav()
     let interval_stamps = current_timestamp - claimed_timestamp
     let (interval_days:felt,_) = unsigned_div_rem(interval_stamps, 86400)
@@ -498,7 +511,7 @@ func claimManagementFee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     with_attr error_message("claimManagementFee: sum of percents tab not equal at 100%"):
         assert totalpercent = 100
     end
-    let (claimAmount_:Uint256) = getManagementFeeValue(fund_)
+    let (claimAmount_:Uint256) = getManagementFeeValue()
     let (amounts_ : felt*) = alloc()
     calc_amount_of_each_asset(claimAmount_, _assets_len, _assets, _percents, amounts_)
     let (manager_:felt) = managerAccount.read()
@@ -509,7 +522,7 @@ end
 
 func mintFromVF{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(_assetManager : felt, share_amount : Uint256, share_price : Uint256):
     onlyVaultFactory()
-    __mintShares(_assetManager, share_amount, share_price)
+    mint(_assetManager, share_amount, share_price)
     return ()
 end
 
@@ -542,7 +555,7 @@ func buyShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (shareAmount_) = uint256_div(amountWithoutFeesPow_, sharePrice_)
 
     # mint share
-    __mintShares(caller, shareAmount_, sharePrice_)
+    mint(caller_, shareAmount_, sharePrice_)
 
     ##event
 
@@ -561,11 +574,20 @@ func sellShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 ):
     alloc_locals
     let (fund_:felt) = get_contract_address()
+    let (denominationAsset_:felt) = denominationAsset.read()
     let (caller_) = get_caller_address()
     let (owner_) = getOwnerOf(token_id)
     with_attr error_message("sell_share: not owner of shares"):
         assert caller_ = owner_
     end
+
+
+    let(_sharesAmount:Uint256) = sharesBalance(token_id)
+    let(_isLe:felt) = uint256_le(share_amount, _sharesAmount)
+    with_attr error_message("sell_share: shares amount requested exceed NFT's share amount"):
+        assert _isLe = 1
+    end
+
     let (totalpercent:felt) = __calculTab100(percents_len, percents)
     with_attr error_message("sell_share: sum of percents tab not equal at 100%"):
         assert totalpercent = 100
@@ -573,7 +595,7 @@ func sellShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     #check timelock
     let (policyManager_:felt) = __getPolicyManager()
-    let (mintedTimesTamp_:felt) = getMintedTimesTamp(token_id)
+    let (mintedBlockTimesTamp_:felt) = getMintedTimesTamp(token_id)
     let (currentTimesTamp_:felt) = get_block_timestamp()
     let (timelock_:felt) = IPolicyManager.getTimelock(policyManager_, fund_)
     let diffTimesTamp_:felt = currentTimesTamp_ - mintedBlockTimesTamp_
@@ -602,7 +624,7 @@ func sellShare{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     let(current_share_price_:Uint256) = getSharePrice()
     let(has_performed_) = uint256_le(previous_share_price_, current_share_price_)
     if has_performed_ == 1 :
-        let(diff_:Uint256) = uint256_checked_sub_le(current_share_price_, previous_share_price_)
+        let(diff_:Uint256) = SafeUint256.sub_le(current_share_price_, previous_share_price_)
         let(diffperc_:Uint256,diffperc_h_) = uint256_mul(diff_, Uint256(100,0))
         let(perfF_:Uint256)=uint256_div(diffperc_, current_share_price_)
         tempvar perf_ = perfF_
@@ -723,9 +745,9 @@ func __transferEachAssetMF{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
     let (treasury_) = __getTreasury()
     let (stackingVault_) = __getStackingVault()
 
-    __withdrawAssetTo(fund_, asset, feeTreasury, treasury_)
-    __withdrawAssetTo(fund_, asset, feeStackingVault, stackingVault_)
-    __withdrawAssetTo(fund_, asset, assetManagerAmount, assetManager_)
+    __withdrawAssetTo(asset, feeTreasury, treasury_)
+    __withdrawAssetTo(asset, feeStackingVault, stackingVault_)
+    __withdrawAssetTo(asset, assetManagerAmount, assetManager_)
 
     __transferEachAssetMF(assetManager_, len - 1, assets + 1, amounts + 1)
     return ()
@@ -750,23 +772,23 @@ func __transfer_each_asset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
     let (assetManager_:felt) = managerAccount.read()
     let (treasury_:felt) = __getTreasury()
     let (stackingVault_) = __getStackingVault()
-    __withdrawAssetTo(fund_, asset, fee_assset_manager, assetManager_)
-    __withdrawAssetTo(fund_, asset, fee_treasury, treasury_)
-    __withdrawAssetTo(fund_, asset, fee_stacking_vault, stackingVault_)
+    __withdrawAssetTo(asset, fee_assset_manager, assetManager_)
+    __withdrawAssetTo(asset, fee_treasury, treasury_)
+    __withdrawAssetTo(asset, fee_stacking_vault, stackingVault_)
 
     let (amount_without_performance_fee) = uint256_sub(amount, fee_perf)
     #EXIT FEES
     let (fee_exit, fee_assset_manager, fee_treasury, fee_stacking_vault) = __get_fee(fund_, FeeConfig.EXIT_FEE, amount_without_performance_fee)
 
     # transfer fee to asset maanger, fee_treasury, stacking_vault 
-    __withdrawAssetTo(fund_, asset, fee_assset_manager, assetManager_)
-    __withdrawAssetTo(fund_, asset, fee_treasury, treasury_)
-    __withdrawAssetTo(fund_, asset, fee_stacking_vault, stackingVault_)
+    __withdrawAssetTo(asset, fee_assset_manager, assetManager_)
+    __withdrawAssetTo(asset, fee_treasury, treasury_)
+    __withdrawAssetTo(asset, fee_stacking_vault, stackingVault_)
 
 
     let (amount_without_fee) = uint256_sub(amount_without_performance_fee, fee_exit)
 
-    __withdrawAssetTo(fund_, assets[0], amount_without_fee, caller)
+    __withdrawAssetTo(assets[0], amount_without_fee, caller)
     __transfer_each_asset(caller, len - 1, assets + 1, amounts + 1, perf)
 
     return ()
@@ -784,7 +806,7 @@ func __calculGav1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     if assets_len == 0:
         return (gav=Uint256(0, 0))
     end
-    let (asset_value:Uint256) = AssetInfo[(assets_len - 1 ) *AssetInfo.SIZE].valueInDeno
+    let asset_value:Uint256 = assets[(assets_len - 1 ) *AssetInfo.SIZE].valueInDeno
     let (gavOfRest) = __calculGav1(assets_len=assets_len - 1, assets=assets)
     let (gav, _) = uint256_add(asset_value, gavOfRest)
     return (gav=gav)
@@ -798,7 +820,7 @@ func __calculGav2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     if externalPositions_len == 0:
         return (gav=Uint256(0, 0))
     end
-    let (asset_value:Uint256) = PositionInfo[(assets_len - 1 ) *PositionInfo.SIZE].valueInDeno
+    let asset_value:Uint256 = externalPositions[(externalPositions_len - 1 ) *PositionInfo.SIZE].valueInDeno
     let (gavOfRest) = __calculGav2(externalPositions_len=externalPositions_len - 1, externalPositions=externalPositions)
     let (gav, _) = uint256_add(asset_value, gavOfRest)
     return (gav=gav)
@@ -863,8 +885,8 @@ func __assertMaxminRange{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     let (policyManager_) = __getPolicyManager()
     let (fund_:felt) = get_contract_address()
     let (max:Uint256, min:Uint256) = IPolicyManager.getMaxminAmount(policyManager_, fund_)
-    let (le_max) = uint256_le(amount, max)
-    let (be_min) = uint256_le(min, amount)
+    let (le_max) = uint256_le(_amount, max)
+    let (be_min) = uint256_le(min, _amount)
     with_attr error_message("__assertMaxminRange: amount is too high"):
         assert le_max = 1
     end
@@ -913,20 +935,6 @@ end
    # Logic
    #
 
-   func __mintShares{
-        pedersen_ptr: HashBuiltin*, 
-        syscall_ptr: felt*, 
-        range_check_ptr
-    }(
-        _amount: Uint256,
-        _newSharesholder:felt,
-        _sharePricePurchased:Uint256,
-    ):
-    onlyComptroller()
-    let (_tokenId:Uint256) = totalSupply()
-   mint(_newSharesholder, _amount, _sharePricePurchased)
-   return ()
-    end
 
 
 
@@ -939,9 +947,6 @@ end
         _tokenId:Uint256,
     ):
     alloc_locals
-    let(_comptroller:felt) = comptroller.read()
-    let(_caller:felt) = get_caller_address()
-    let(_shareowner:felt)  = ownerOf(_tokenId)
     let(_sharesAmount:Uint256) = sharesBalance(_tokenId)
     let (equal_) = uint256_eq(_sharesAmount, _amount)
     if equal_ == TRUE:

@@ -15,7 +15,7 @@ namespace IIntegrationManager:
     func setAvailableIntegration(_contract: felt, _selector: felt, _integration:felt):
     end
 
-    func getAvailableAssets(_contract: felt) -> (availableAssets_len :felt,  availableAssets:felt*):
+    func getAvailableAssets() -> (availableAssets_len :felt,  availableAssets:felt*):
     end
 
 
@@ -30,6 +30,6 @@ namespace IIntegrationManager:
     func getIntegration(_contract: felt, _selector: felt) -> (res: felt):
     end
 
-    func getAvailableExternalPositions (_contract: felt) -> (availableAssets_len : felt,  availableAssets:felt*):
+    func getAvailableExternalPositions () -> (availableAssets_len : felt,  availableAssets:felt*):
     end
 end

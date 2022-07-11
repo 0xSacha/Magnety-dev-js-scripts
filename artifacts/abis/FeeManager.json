@@ -1,0 +1,341 @@
+[
+    {
+        "inputs": [
+            {
+                "name": "_vaultFactory",
+                "type": "felt"
+            }
+        ],
+        "name": "constructor",
+        "outputs": [],
+        "type": "constructor"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "key",
+                "type": "felt"
+            }
+        ],
+        "name": "getFeeConfig",
+        "outputs": [
+            {
+                "name": "value",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            }
+        ],
+        "name": "getClaimedTimestamp",
+        "outputs": [
+            {
+                "name": "timestamp",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            }
+        ],
+        "name": "getEntranceFee",
+        "outputs": [
+            {
+                "name": "fee",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            }
+        ],
+        "name": "isEntranceFeeEnabled",
+        "outputs": [
+            {
+                "name": "is_enabled",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            }
+        ],
+        "name": "getExitFee",
+        "outputs": [
+            {
+                "name": "fee",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            }
+        ],
+        "name": "isExitFeeEnabled",
+        "outputs": [
+            {
+                "name": "is_enabled",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            }
+        ],
+        "name": "getPerformanceFee",
+        "outputs": [
+            {
+                "name": "fee",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            }
+        ],
+        "name": "isPerformanceFeeEnabled",
+        "outputs": [
+            {
+                "name": "is_enabled",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            }
+        ],
+        "name": "getManagementFee",
+        "outputs": [
+            {
+                "name": "fee",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            }
+        ],
+        "name": "isManagementFeeEnabled",
+        "outputs": [
+            {
+                "name": "is_enabled",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "key",
+                "type": "felt"
+            },
+            {
+                "name": "value",
+                "type": "felt"
+            }
+        ],
+        "name": "setFeeConfig",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "timestamp",
+                "type": "felt"
+            }
+        ],
+        "name": "setClaimedTimestamp",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "fee",
+                "type": "felt"
+            }
+        ],
+        "name": "setEntranceFee",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "is_enabled",
+                "type": "felt"
+            }
+        ],
+        "name": "setEntranceFeeEnabled",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "fee",
+                "type": "felt"
+            }
+        ],
+        "name": "setExitFee",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "is_enabled",
+                "type": "felt"
+            }
+        ],
+        "name": "setExitFeeEnabled",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "fee",
+                "type": "felt"
+            }
+        ],
+        "name": "setPerformanceFee",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "is_enabled",
+                "type": "felt"
+            }
+        ],
+        "name": "setPerformanceFeeEnabled",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "fee",
+                "type": "felt"
+            }
+        ],
+        "name": "setManagementFee",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "vault",
+                "type": "felt"
+            },
+            {
+                "name": "is_enabled",
+                "type": "felt"
+            }
+        ],
+        "name": "setManagementFeeEnabled",
+        "outputs": [],
+        "type": "function"
+    }
+]
